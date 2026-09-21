@@ -1,0 +1,1231 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ParanoicCrypt P2P</title>
+<meta name="theme-color" content="#0a6cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ParanoicCrypt">
+<style>
+  :root{color-scheme:dark light}
+  body{font-family:system-ui,sans-serif;max-width:680px;margin:0 auto;padding:16px;background:#111;color:#eee}
+  h1{font-size:1.15rem}
+  .note{font-size:.82rem;color:#999;line-height:1.4}
+  textarea{width:100%;box-sizing:border-box;min-height:80px;font-family:monospace;font-size:.75rem;background:#1c1c1c;color:#eee;border:1px solid #444;border-radius:8px;padding:8px}
+  select,input[type=number]{background:#1c1c1c;color:#eee;border:1px solid #444;border-radius:8px;padding:8px}
+  button{padding:9px 14px;border-radius:8px;border:1px solid #555;background:#2a2a2a;color:#eee;font-size:.95rem;cursor:pointer}
+  button:hover{background:#3a3a3a}
+  button:disabled{opacity:.35;cursor:default}
+  .row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;align-items:center}
+  .hidden{display:none!important}
+  #msgsWrap{position:relative}
+  #msgs{border:1px solid #333;border-radius:8px;height:280px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+  .msg{max-width:78%;padding:6px 10px;border-radius:10px;background:#2a2a2a;font-size:.9rem}
+  .msg.me{align-self:flex-end;background:#245}
+  .msg.sys{align-self:center;background:none;color:#888;font-size:.78rem}
+  .msg-text{filter:blur(5px);transition:filter .12s ease;cursor:pointer;-webkit-user-select:none;user-select:none}
+  .msg-text.revealed{filter:none;-webkit-user-select:text;user-select:text}
+  .watermark{position:absolute;inset:0;pointer-events:none;opacity:.05;overflow:hidden;font-size:.65rem;line-height:1.3;word-break:break-all;user-select:none;padding:4px;border-radius:8px}
+  .shield{position:absolute;inset:0;background:rgba(17,17,17,.95);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;text-align:center;font-size:.85rem;color:#f88;z-index:5;border-radius:8px;padding:10px;cursor:pointer}
+  .shield.hidden{display:none}
+  #chatInput{flex:1;padding:10px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee}
+  section{border-top:1px solid #333;padding-top:12px;margin-top:12px}
+  .peers{font-size:.8rem;color:#8bf}
+  .install-card{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:80;
+    max-width:536px;margin:0 auto;padding:16px;border-radius:22px;
+    background:linear-gradient(165deg,rgba(14,32,62,.98),rgba(9,14,26,.98));
+    border:1px solid rgba(120,180,255,.35);box-shadow:0 22px 60px rgba(0,0,0,.65);
+    animation:rise .35s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes rise{from{transform:translateY(120%);opacity:0}to{transform:none;opacity:1}}
+  .install-top{display:flex;gap:13px;align-items:center;margin-bottom:12px}
+  .install-top img{width:56px;height:56px;border-radius:14px;flex:none;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+  .install-top b{display:block;font-size:1.06rem}
+  .install-top span{color:#999;font-size:.85rem}
+  .install-row{display:flex;gap:9px}
+  .install-row button{flex:1;min-height:50px;border-radius:14px;font-size:1rem;font-weight:700;cursor:pointer;border:0}
+  .install-row .no{background:rgba(255,255,255,.07);color:#999;border:1px solid #3a3a3a}
+  .install-row .yes{background:linear-gradient(135deg,#0a6cff,#00b4ff);color:#fff}
+  .steps{margin:0 0 13px;padding:0;list-style:none;counter-reset:st}
+  .steps li{counter-increment:st;display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;font-size:.95rem}
+  .steps li::before{content:counter(st);flex:none;width:25px;height:25px;border-radius:50%;
+    display:grid;place-items:center;font-size:.82rem;font-weight:800;color:#06101f;
+    background:linear-gradient(140deg,#ffd500,#ffb300)}
+  .modal-back{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:18px;
+    background:rgba(3,6,12,.75);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);animation:fade .22s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{position:relative;width:100%;max-width:392px;padding:24px 20px 20px;border-radius:26px;text-align:center;
+    background:linear-gradient(168deg,rgba(18,38,72,.99),rgba(9,14,26,.99));
+    border:1px solid rgba(120,180,255,.34);box-shadow:0 30px 80px rgba(0,0,0,.7);
+    animation:pop .3s cubic-bezier(.2,.9,.3,1.25)}
+  @keyframes pop{from{transform:scale(.88);opacity:0}to{transform:none;opacity:1}}
+  .modal img{width:76px;height:76px;border-radius:19px;box-shadow:0 10px 26px rgba(0,0,0,.5)}
+  .modal b{display:block;font-size:1.2rem;margin:13px 0 16px}
+  .modal .steps{text-align:left;margin:0 0 18px}
+  .modal-x{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:50%;
+    border:1px solid #3a3a3a;background:rgba(255,255,255,.06);color:#999;font-size:1rem;cursor:pointer}
+  .os-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
+  .os-grid button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;
+    border-radius:15px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);
+    color:#eee;font-size:.88rem;font-weight:600;cursor:pointer;transition:.15s}
+  .os-grid button:active{transform:scale(.96)}
+  .os-grid button i{font-style:normal;font-size:1.8rem;line-height:1}
+  .os-grid button.me{border-color:rgba(120,180,255,.7);background:linear-gradient(160deg,rgba(10,108,255,.35),rgba(0,180,255,.14))}
+  .os-grid button.me::after{content:"схоже, у тебе";font-size:.64rem;color:#8fc6ff}
+  .os-grid button:last-child{grid-column:span 2}
+  #osActions button{width:100%;margin:0 0 8px}
+  #osPane .steps{text-align:left}
+  .install-btn{position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:70;
+    width:52px;height:52px;border-radius:50%;border:1px solid #3a3a3a;cursor:pointer;
+    background:rgba(28,28,28,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    color:#eee;font-size:1.35rem;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  .status{font-size:.85rem;color:#8f8}
+  .status.err{color:#f88}
+  .sas-bar{background:#2a1c05;border:1px solid #a66;border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .sas-bar .sas-code{font-size:1.3rem;font-weight:800;letter-spacing:1px;color:#ffd580;margin:6px 0}
+  .call-tiles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;min-height:4px}
+  .tile-video{width:140px;height:105px;border-radius:10px;background:#000;object-fit:cover;border:1px solid #444}
+  #noJsWarn{position:fixed;inset:0;z-index:2000;overflow:auto;
+    background:#2a1608;color:#ffe2c2;padding:22px 18px;font-size:.95rem;line-height:1.5}
+  #noJsWarn b{color:#fff}
+  #noJsWarn p{margin:14px 0 0}
+</style>
+</head>
+<body>
+<div id="noJsWarn">
+  <b>⚠️ Сторінка відкрита як документ — кнопки не працюватимуть</b>
+  <p><b>iPhone / iPad:</b> Apple не дозволяє запускати локальні HTML-файли. Потрібне посилання:
+     попроси того, хто надіслав файл, дати адресу <b>https://…</b> і відкрий її в Safari.<br>
+     Якщо файл уже в «Файлах»: <b>Поділитися → «Скопіювати в Safari»</b> (працює не в усіх версіях iOS).</p>
+  <p><b>Компʼютер / Android:</b> відкрий цей файл у Chrome, Safari або Firefox — тоді все запрацює.</p>
+</div>
+
+
+<h1>🔒 ParanoicCrypt P2P</h1>
+<p class="note">
+  Оберіть режим нижче: <b>«один на один»</b> — найпростіше й найанонімніше (лише два пристрої,
+  ніякого реле) — або <b>«колективний дзвінок»</b> — голос/відео й текст для кількох людей одразу
+  (mesh: кожен з'єднується з кожним напряму, нові учасники «знайомляться» з рештою через вже
+  встановлені зашифровані канали — сервера немає в жодному режимі). Код запрошення передаєте вручну —
+  будь-яким каналом (голосом, іншим месенджером). Нічого не зберігається, доки ви самі не натиснете
+  «Зберегти чат» — після закриття вкладки розмова і ключі шифрування зникають назавжди.<br><br>
+  <b>Шифрування:</b> подвійний каскад незалежних алгоритмів на кожен канал — ECDH P-256 → HKDF →
+  AES-256-GCM, а поверх нього ChaCha20-Poly1305 з окремим ключем (той самий звірений з OpenSSL код,
+  що й у файловому шифраторі ParanoicCrypt). Кожне повідомлення додатково доповнюється до найближчого
+  «кошика» розміру (як у Signal), щоб довжина тексту не була видна навіть тому, хто лише перехоплює
+  зашифровані пакети. У режимі «один на один» чат заблоковано, поки ви не підтвердите код звірки (SAS)
+  вголос — це ловить підміну з'єднання (MITM) до того, як ви скажете щось важливе.<br><br>
+  <b>Чесно про «офлайн»:</b> саме з'єднання й код запрошення не йдуть через жоден сервер. Але щоб
+  пробити NAT, браузер за замовчуванням запитує у Google/Cloudflare (STUN) ваш публічний IP — це
+  бачить лише сервер STUN, не зміст розмови. Якщо всі учасники на одному Wi-Fi/точці доступу —
+  увімкніть нижче «лише локальна мережа», тоді жоден зовнішній сервер не задіюється взагалі. Якщо
+  пряме з'єднання неможливе (симетричний NAT), браузер сам підключить публічний TURN-ретранслятор —
+  він передає лише зашифрований трафік, зміст повідомлень і розмови йому не видно, але він бачить
+  IP-адреси сторін.<br><br>
+  <b>Чесно про груповий дзвінок:</b> мій мікрофон/камера додаються до з'єднання одразу при вході —
+  зміну мікрофона/камери під час дзвінка не підтримано (це вимагало б повторного узгодження SDP,
+  а тут усе узгодження — ручне, копіюванням коду). Вимкнути мікрофон на льоту — можна. При великій
+  кількості учасників (mesh) кожен пристрій тримає з'єднання з кожним — на слабких телефонах і
+  повільних мережах на 6+ людей очікуйте гальм.<br><br>
+  <b>Чесно про антискрін:</b> надійно ловиться лише клавіша PrintScreen на Windows. Win+Shift+S,
+  Cmd+Shift+3/4/5 на macOS та скріншоти/запис на телефоні браузер у принципі не бачить — від них
+  захищає лише розмиття тексту й водяний знак, а не виявлення.
+</p>
+
+<section id="home">
+  <div class="row">
+    <label><input type="radio" name="mode" id="modeSolo" checked> 👤 Один на один</label>
+    <label><input type="radio" name="mode" id="modeGroup"> 👥 Колективний дзвінок</label>
+  </div>
+  <div class="row">
+    <input id="nickInput" placeholder="Ваш нік (необов'язково)" maxlength="24">
+    <label><input type="checkbox" id="anonMode"> 🎭 Анонім</label>
+  </div>
+  <div class="row" id="groupMediaRow" style="display:none">
+    <label><input type="checkbox" id="micOn" checked> 🎙️ Мікрофон</label>
+    <label><input type="checkbox" id="camOn"> 📷 Камера</label>
+  </div>
+  <div class="row">
+    <label><input type="checkbox" id="lanOnly"> 📡 Лише локальна мережа (без STUN/TURN, той самий Wi-Fi)</label>
+  </div>
+  <div class="row">
+    <button id="btnCreate">🆕 Створити запрошення</button>
+    <button id="btnJoin">🔑 Приєднатися за кодом</button>
+  </div>
+</section>
+
+<section id="createPanel" class="hidden">
+  <p><b>Крок 1.</b> Надішліть цей код тому, кого запрошуєте:</p>
+  <textarea id="offerCode" readonly></textarea>
+  <div class="row"><button id="copyOffer">📋 Копіювати</button></div>
+  <p><b>Крок 2.</b> Вставте код-відповідь:</p>
+  <textarea id="answerInput" placeholder="Код відповіді"></textarea>
+  <div class="row"><button id="btnComplete">🔗 З'єднатися</button></div>
+  <p id="createStatus" class="status"></p>
+</section>
+
+<section id="joinPanel" class="hidden">
+  <p><b>Крок 1.</b> Вставте код від того, хто вас запросив:</p>
+  <textarea id="offerInput" placeholder="Код запрошення"></textarea>
+  <div class="row"><button id="btnGenAnswer">🔓 Згенерувати код відповіді</button></div>
+  <p><b>Крок 2.</b> Надішліть код назад:</p>
+  <textarea id="answerCode" readonly></textarea>
+  <div class="row"><button id="copyAnswer">📋 Копіювати</button></div>
+  <p id="joinStatus" class="status"></p>
+</section>
+
+<section id="chatPanel" class="hidden">
+  <p class="peers" id="peerLine">👤 з'єднано: —</p>
+  <div id="peerList" class="note"></div>
+  <div id="sasBar" class="sas-bar hidden">
+    <p>🔐 Звірте цей код із співрозмовником <b>вголос або іншим каналом</b> (не цим чатом) — це доводить, що з'єднання ніхто не підмінив (MITM):</p>
+    <p class="sas-code" id="sasCode">—</p>
+    <button id="btnSasConfirm">✅ Код збігається, довіряю</button>
+    <p class="note">Не збігається — негайно завершіть розмову, вас підключили до когось іншого.</p>
+  </div>
+  <p class="note">🌫️ Текст повідомлень розмито — наведіть курсор (ПК) чи натисніть і тримайте (телефон), щоб прочитати одне повідомлення. При PrintScreen (Windows) чат сам ховається й попереджає співрозмовника.</p>
+  <div id="msgsWrap">
+    <div id="msgs"></div>
+    <div id="watermark" class="watermark"></div>
+    <div id="shield" class="shield hidden">🙈 Захист активовано — натисніть, щоб повернутись</div>
+  </div>
+  <div class="row">
+    <input id="chatInput" placeholder="Повідомлення..." autocomplete="off" disabled>
+    <button id="btnSend" disabled>➤</button>
+  </div>
+  <div class="row">
+    <button id="btnSaveChat">💾 Зберегти чат (з паролем)</button>
+    <button id="btnLeave">🔚 Завершити розмову</button>
+  </div>
+</section>
+
+<section id="groupPanel" class="hidden">
+  <p class="peers" id="gPeerLine">👥 у дзвінку: 1</p>
+  <div id="gPeerList" class="note"></div>
+  <p class="note">Код біля кожного імені звіряйте вголос особисто з цією людиною — це і є перевірка, що з'єднання не підмінене.</p>
+  <div id="callTiles" class="call-tiles"></div>
+  <div class="row">
+    <button id="btnMicToggle">🎙️ Мікрофон: увімк.</button>
+    <button id="btnInviteMoreGroup">➕ Запросити ще</button>
+    <button id="btnLeaveGroup">🔚 Вийти з дзвінка</button>
+  </div>
+  <div id="gmsgsWrap">
+    <div id="gmsgs"></div>
+  </div>
+  <div class="row">
+    <input id="gChatInput" placeholder="Повідомлення в груповий чат..." autocomplete="off">
+    <button id="gBtnSend">➤</button>
+  </div>
+</section>
+
+<section id="restorePanel">
+  <p><b>📂 Відкрити збережений чат</b></p>
+  <p class="note">Оберіть файл <code>.pcxchat</code>, який ви самі зберегли кнопкою «Зберегти чат», і введіть той самий пароль.</p>
+  <input type="file" id="restoreFiles" accept=".pcxchat">
+  <div id="restoreOut"></div>
+</section>
+
+<button class="install-btn hidden" id="btnInstall" aria-label="Додати на екран">📲</button>
+<div class="modal-back hidden" id="howBack">
+  <div class="modal">
+    <button class="modal-x" id="howClose" aria-label="Закрити">✕</button>
+    <img id="howIcon" alt="">
+    <b id="howTitle">Додати на екран</b>
+    <div class="os-grid" id="osGrid">
+      <button data-os="android"><i>🤖</i><span>Android</span></button>
+      <button data-os="ios"><i>🍎</i><span>iPhone / iPad</span></button>
+      <button data-os="win"><i>🪟</i><span>Windows</span></button>
+      <button data-os="mac"><i>🍏</i><span>macOS</span></button>
+      <button data-os="linux"><i>🐧</i><span>Linux / Ubuntu</span></button>
+    </div>
+    <div id="osPane" class="hidden">
+      <ol class="steps" id="installSteps"></ol>
+      <div id="osActions"></div>
+      <button class="ghost" id="btnBackOs">← Інша система</button>
+    </div>
+    <button class="primary" id="howOk">Закрити</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* JS працює -> попередження для режиму документа не потрібне */
+(function(){var w=document.getElementById("noJsWarn"); if(w) w.remove();})();
+
+
+/* Без lanOnly: публічні STUN (пробити NAT) + публічний TURN (як останній резерв, якщо пряме
+   з'єднання неможливе). З lanOnly: порожній список — жоден зовнішній сервер не запитується,
+   з'єднання можливе лише в межах однієї локальної мережі/Wi-Fi/точки доступу. */
+const RTC_CONFIG_FULL = {
+  iceServers: [
+    { urls: ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"] },
+    {
+      urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"],
+      username: "openrelayproject", credential: "openrelayproject"
+    }
+  ]
+};
+const RTC_CONFIG_LAN = { iceServers: [] };
+function rtcConfig(lanOnly){ return lanOnly ? RTC_CONFIG_LAN : RTC_CONFIG_FULL; }
+
+const $ = (id) => document.getElementById(id);
+const te = new TextEncoder(), td = new TextDecoder();
+
+function b64(buf){ const b=new Uint8Array(buf); let s=""; for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
+function unb64(str){ const bin=atob(str.trim()); const b=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i); return b.buffer; }
+function randId(){ return b64(crypto.getRandomValues(new Uint8Array(6))).replace(/[^a-zA-Z0-9]/g,"").slice(0,8); }
+
+/* Два режими: "solo" — один на один (peerId/peerNick/peer), "group" — колективний дзвінок
+   (Map peers, з реле сигналів через уже встановлені канали, як і домовлялись раніше). */
+const state = {
+  myId: randId(),
+  myNick: "",
+  mode: "solo",
+  // --- solo ---
+  peerId: null,
+  peerNick: "",
+  peer: null,        // {pc, dc, aesKey, chachaKey, fingerprint, ready}
+  sasConfirmed: false,
+  // --- group (колективний дзвінок) ---
+  peers: new Map(),        // peerId -> {pc, dc, aesKey, chachaKey, fingerprint, ready, nick, audioEl, videoEl}
+  pendingEdges: new Map(), // peerId -> {pc, privateKey, dc}
+  localStream: null,       // мій мікрофон/камера (лише в group-режимі)
+  groupLanOnly: false,
+  // --- спільне ---
+  pending: null,   // {pc, privateKey, dc?} — під час встановлення першого з'єднання (обидва режими)
+  history: []
+};
+function resolveNick(){
+  const anon = $("anonMode").checked;
+  const typed = $("nickInput").value.trim();
+  const nick = anon ? ("Анонім-" + state.myId.slice(0,4)) : (typed || ("Гість-" + state.myId.slice(0,4)));
+  state.myNick = nick;
+  return nick;
+}
+
+/* ---- Пароль -> ключ (PBKDF2, 300 000 ітерацій) для збереження чату локально ---- */
+async function keyFromPassword(password, salt){
+  const base = await crypto.subtle.importKey("raw", te.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", hash:"SHA-256", salt, iterations:300000},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]
+  );
+}
+/* ---- Локальне збереження/відкриття чату під паролем (лише на цьому пристрої, без учасника) ---- */
+async function exportChatWithPassword(){
+  if (!state.history.length) { alert("Поки що нема жодного повідомлення."); return; }
+  const password = prompt("Пароль для збереження чату (запам'ятайте — без нього не відкриєте назад):");
+  if (!password) return;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await keyFromPassword(password, salt);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, te.encode(JSON.stringify(state.history)));
+  const magic = te.encode("PCXCHAT1");
+  const out = new Uint8Array(magic.length + salt.length + iv.length + ct.byteLength);
+  let o = 0;
+  out.set(magic, o); o += magic.length;
+  out.set(salt, o); o += salt.length;
+  out.set(iv, o); o += iv.length;
+  out.set(new Uint8Array(ct), o);
+  const blob = new Blob([out], {type:"application/octet-stream"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `chat-${Date.now()}.pcxchat`;
+  document.body.appendChild(a); a.click(); a.remove();
+  appendSystem("Чат збережено локально у файл. Без пароля його ніхто не відкриє.");
+}
+async function importChatFromFile(file){
+  const out = $("restoreOut");
+  out.textContent = "Читаємо файл...";
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const magic = td.decode(buf.slice(0,8));
+    if (magic !== "PCXCHAT1") { out.textContent = "Це не файл збереженого чату."; return; }
+    const salt = buf.slice(8,24), iv = buf.slice(24,36), ct = buf.slice(36);
+    const password = prompt("Пароль до цього файлу:");
+    if (!password) { out.textContent = ""; return; }
+    const key = await keyFromPassword(password, salt);
+    const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, ct);
+    const history = JSON.parse(td.decode(pt));
+    out.innerHTML = "";
+    for (const m of history) {
+      const d = document.createElement("div");
+      d.className = "msg " + (m.from === "me" ? "me" : "peer");
+      d.textContent = `[${m.nick || m.from}] ${m.text}`;
+      out.appendChild(d);
+    }
+  } catch (err) {
+    out.textContent = "Не вдалося відкрити: невірний пароль або пошкоджений файл.";
+  }
+}
+
+/* ================= ДРУГИЙ КАСКАД: ChaCha20-Poly1305 (RFC 8439) =================
+   Той самий, звірений з OpenSSL і RFC-вектором код, що й у файловому шифраторі
+   ParanoicCrypt (level "Medium"): стандартний потоковий ARX-шифр, інший принцип
+   за AES, тому теоретичний злам одного не допомагає зламати інший. ============= */
+function rotl(v, c) { return ((v << c) | (v >>> (32 - c))) >>> 0; }
+function chachaBlock(key32, counter, nonce12, out) {
+  const s = new Uint32Array(16);
+  s[0] = 0x61707865; s[1] = 0x3320646e; s[2] = 0x79622d32; s[3] = 0x6b206574;
+  const kv = new DataView(key32.buffer, key32.byteOffset, 32);
+  for (let i = 0; i < 8; i++) s[4 + i] = kv.getUint32(i * 4, true);
+  s[12] = counter >>> 0;
+  const nv = new DataView(nonce12.buffer, nonce12.byteOffset, 12);
+  s[13] = nv.getUint32(0, true); s[14] = nv.getUint32(4, true); s[15] = nv.getUint32(8, true);
+  const x = new Uint32Array(s);
+  const QR = (a, b, c, d) => {
+    x[a] = (x[a] + x[b]) >>> 0; x[d] = rotl(x[d] ^ x[a], 16);
+    x[c] = (x[c] + x[d]) >>> 0; x[b] = rotl(x[b] ^ x[c], 12);
+    x[a] = (x[a] + x[b]) >>> 0; x[d] = rotl(x[d] ^ x[a], 8);
+    x[c] = (x[c] + x[d]) >>> 0; x[b] = rotl(x[b] ^ x[c], 7);
+  };
+  for (let i = 0; i < 10; i++) {
+    QR(0, 4, 8, 12); QR(1, 5, 9, 13); QR(2, 6, 10, 14); QR(3, 7, 11, 15);
+    QR(0, 5, 10, 15); QR(1, 6, 11, 12); QR(2, 7, 8, 13); QR(3, 4, 9, 14);
+  }
+  const ov = new DataView(out.buffer, out.byteOffset, 64);
+  for (let i = 0; i < 16; i++) ov.setUint32(i * 4, (x[i] + s[i]) >>> 0, true);
+}
+function chacha20(key32, counter, nonce12, data) {
+  const out = new Uint8Array(data.length);
+  const block = new Uint8Array(64);
+  for (let off = 0; off < data.length; off += 64) {
+    chachaBlock(key32, counter + (off / 64), nonce12, block);
+    const n = Math.min(64, data.length - off);
+    for (let i = 0; i < n; i++) out[off + i] = data[off + i] ^ block[i];
+  }
+  return out;
+}
+const P1305 = (1n << 130n) - 5n;
+function leToBig(bytes) {
+  let v = 0n;
+  for (let i = bytes.length - 1; i >= 0; i--) v = (v << 8n) | BigInt(bytes[i]);
+  return v;
+}
+function blockToBig(dv, off) {
+  return (dv.getBigUint64(off + 8, true) << 64n) | dv.getBigUint64(off, true);
+}
+function poly1305(key32, msg) {
+  let r = leToBig(key32.subarray(0, 16));
+  r &= 0x0ffffffc0ffffffc0ffffffc0fffffffn;
+  const s = leToBig(key32.subarray(16, 32));
+  let acc = 0n;
+  const dv = new DataView(msg.buffer, msg.byteOffset, msg.byteLength);
+  const full = msg.length - (msg.length % 16);
+  const ONE128 = 1n << 128n;
+  for (let i = 0; i < full; i += 16) {
+    acc = ((acc + (blockToBig(dv, i) | ONE128)) * r) % P1305;
+  }
+  if (full < msg.length) {
+    const chunk = msg.subarray(full);
+    acc = ((acc + (leToBig(chunk) | (1n << BigInt(chunk.length * 8)))) * r) % P1305;
+  }
+  acc = (acc + s) & ((1n << 128n) - 1n);
+  const tag = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) { tag[i] = Number(acc & 0xffn); acc >>= 8n; }
+  return tag;
+}
+function pad16(n) { return n % 16 === 0 ? 0 : 16 - (n % 16); }
+function le64(n) {
+  const b = new Uint8Array(8);
+  let v = BigInt(n);
+  for (let i = 0; i < 8; i++) { b[i] = Number(v & 0xffn); v >>= 8n; }
+  return b;
+}
+function polyKeyGen(key32, nonce12) {
+  const blk = new Uint8Array(64);
+  chachaBlock(key32, 0, nonce12, blk);
+  return blk.subarray(0, 32);
+}
+function macData(aad, ct) {
+  const total = aad.length + pad16(aad.length) + ct.length + pad16(ct.length) + 16;
+  const m = new Uint8Array(total);
+  let o = 0;
+  m.set(aad, o); o += aad.length + pad16(aad.length);
+  m.set(ct, o); o += ct.length + pad16(ct.length);
+  m.set(le64(aad.length), o); o += 8;
+  m.set(le64(ct.length), o);
+  return m;
+}
+function ccSeal(key32, nonce12, plaintext, aad) {
+  aad = aad || new Uint8Array(0);
+  const ct = chacha20(key32, 1, nonce12, plaintext);
+  const tag = poly1305(polyKeyGen(key32, nonce12), macData(aad, ct));
+  const out = new Uint8Array(ct.length + 16);
+  out.set(ct, 0); out.set(tag, ct.length);
+  return out;
+}
+function ccOpen(key32, nonce12, sealed, aad) {
+  aad = aad || new Uint8Array(0);
+  if (sealed.length < 16) throw new Error("ChaCha: занадто короткі дані");
+  const ct = sealed.subarray(0, sealed.length - 16);
+  const tag = sealed.subarray(sealed.length - 16);
+  const expect = poly1305(polyKeyGen(key32, nonce12), macData(aad, ct));
+  let diff = 0;
+  for (let i = 0; i < 16; i++) diff |= tag[i] ^ expect[i];
+  if (diff !== 0) throw new Error("ChaCha: тег не збігається");
+  return chacha20(key32, 1, nonce12, ct);
+}
+
+/* ---- Доповнення розміру: приховує точну довжину повідомлення (як у Signal) ----
+   Замість реальної довжини зловмисник, що лише бачить зашифровані пакети,
+   бачить тільки «розмір до 128 байт», «до 1 КБ» тощо. */
+const PAD_BUCKETS = [64,128,256,512,1024,2048,4096,8192,16384,32768,65536];
+function padPlain(bytes){
+  const target = PAD_BUCKETS.find((b) => b >= bytes.length + 4) || (bytes.length + 4);
+  const out = new Uint8Array(target);
+  new DataView(out.buffer).setUint32(0, bytes.length, true);
+  out.set(bytes, 4);
+  return out;
+}
+function unpadPlain(bytes){
+  const n = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, true);
+  return bytes.subarray(4, 4 + n);
+}
+
+/* ---- Конверт: AES-256-GCM, а поверх нього ChaCha20-Poly1305 (окремий ключ), з доповненням.
+   AAD зовнішнього шару = IV внутрішнього — зшиває обидва шари в одне ціле. ---- */
+async function sealEnvelope(entry, envelope){
+  const plain = padPlain(te.encode(JSON.stringify(envelope)));
+  const ivA = crypto.getRandomValues(new Uint8Array(12));
+  const ctA = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv:ivA}, entry.aesKey, plain));
+  const nonceC = crypto.getRandomValues(new Uint8Array(12));
+  const ctB = ccSeal(entry.chachaKey, nonceC, ctA, ivA);
+  const out = new Uint8Array(12 + 12 + ctB.length);
+  out.set(ivA, 0); out.set(nonceC, 12); out.set(ctB, 24);
+  return out.buffer;
+}
+async function openEnvelope(entry, buf){
+  const b = new Uint8Array(buf);
+  const ivA = b.subarray(0,12), nonceC = b.subarray(12,24), ctB = b.subarray(24);
+  const ctA = ccOpen(entry.chachaKey, nonceC, ctB, ivA);
+  const plainPadded = new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM", iv:ivA}, entry.aesKey, ctA));
+  return JSON.parse(td.decode(unpadPlain(plainPadded)));
+}
+
+/* ---- ECDH P-256 -> HKDF -> два незалежні ключі (AES-256-GCM і ChaCha20-Poly1305) ---- */
+async function genKeyPair(){ return crypto.subtle.generateKey({name:"ECDH",namedCurve:"P-256"}, true, ["deriveBits"]); }
+async function exportPub(k){ return crypto.subtle.exportKey("jwk", k); }
+async function importPub(jwk){ return crypto.subtle.importKey("jwk", jwk, {name:"ECDH",namedCurve:"P-256"}, true, []); }
+async function deriveEdgeSecrets(privateKey, peerPubJwk){
+  const peerPub = await importPub(peerPubJwk);
+  const bits = await crypto.subtle.deriveBits({name:"ECDH", public:peerPub}, privateKey, 256);
+  const base = await crypto.subtle.importKey("raw", bits, "HKDF", false, ["deriveKey","deriveBits"]);
+  const aesKey = await crypto.subtle.deriveKey(
+    {name:"HKDF", hash:"SHA-256", salt:new Uint8Array(0), info: te.encode("paranoiccrypt p2p direct v1 aes")},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]
+  );
+  const chachaKey = new Uint8Array(await crypto.subtle.deriveBits(
+    {name:"HKDF", hash:"SHA-256", salt:new Uint8Array(0), info: te.encode("paranoiccrypt p2p direct v1 chacha")},
+    base, 256
+  ));
+  const fpBits = await crypto.subtle.deriveBits(
+    {name:"HKDF", hash:"SHA-256", salt:new Uint8Array(0), info: te.encode("paranoiccrypt p2p direct v1 fingerprint")},
+    base, 40
+  );
+  return { aesKey, chachaKey, fingerprint: fingerprintToCode(new Uint8Array(fpBits)) };
+}
+function fingerprintToCode(bytes){
+  // 5 байт -> код групами по 3 цифри, зручно звірити вголос
+  let n = 0n;
+  for (const b of bytes) n = (n << 8n) | BigInt(b);
+  const s = n.toString().padStart(13,"0").slice(-12);
+  return s.match(/.{1,3}/g).join("-");
+}
+function waitIceComplete(pc){
+  if (pc.iceGatheringState === "complete") return Promise.resolve();
+  return new Promise((resolve) => {
+    function check(){ if (pc.iceGatheringState==="complete"){ pc.removeEventListener("icegatheringstatechange",check); resolve(); } }
+    pc.addEventListener("icegatheringstatechange", check);
+    setTimeout(resolve, 4000);
+  });
+}
+
+/* ---- Побудова offer/answer-бандлів. У group-режимі одразу додаємо мій мікрофон/камеру
+   в SDP (щоб не робити пізнішу renegotiation — тут її взагалі нема, все ручне). ---- */
+async function makeOfferBundle(lanOnly){
+  const kp = await genKeyPair();
+  const pc = new RTCPeerConnection(rtcConfig(lanOnly));
+  if (state.localStream) for (const track of state.localStream.getTracks()) pc.addTrack(track, state.localStream);
+  const dc = pc.createDataChannel("chat");
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await waitIceComplete(pc);
+  return { pc, dc, privateKey: kp.privateKey, bundle: { id: state.myId, nick: state.myNick, sdp: pc.localDescription.sdp, pub: await exportPub(kp.publicKey) } };
+}
+async function makeAnswerBundle(offerBundle, lanOnly){
+  const kp = await genKeyPair();
+  const pc = new RTCPeerConnection(rtcConfig(lanOnly));
+  if (state.localStream) for (const track of state.localStream.getTracks()) pc.addTrack(track, state.localStream);
+  let dcResolve; const dcPromise = new Promise(r => dcResolve = r);
+  pc.ondatachannel = (e) => dcResolve(e.channel);
+  await pc.setRemoteDescription({type:"offer", sdp: offerBundle.sdp});
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await waitIceComplete(pc);
+  const secrets = await deriveEdgeSecrets(kp.privateKey, offerBundle.pub);
+  return { pc, dcPromise, ...secrets, bundle: { id: state.myId, nick: state.myNick, sdp: pc.localDescription.sdp, pub: await exportPub(kp.publicKey) } };
+}
+
+/* ---- Підключення єдиного peer'а (solo-режим, без реле, без mesh) ---- */
+function wirePeer(peerId, nick, pc, dc, aesKey, chachaKey, fingerprint){
+  const entry = { pc, dc, aesKey, chachaKey, fingerprint: fingerprint || null, ready:false };
+  state.peerId = peerId;
+  state.peerNick = nick || peerId;
+  state.peer = entry;
+  state.sasConfirmed = false;
+  dc.binaryType = "arraybuffer";
+  dc.onopen = () => { entry.ready = true; showPanel("chatPanel"); updateWatermark(); renderPeerCount(); showSasBar(); };
+  dc.onclose = () => { appendSystem((state.peerNick || peerId) + " відключився"); state.peer = null; renderPeerCount(); };
+  dc.onmessage = (e) => handlePeerMessage(e.data).catch((err) => console.error("peer msg error", err));
+  return entry;
+}
+async function sendToPeer(envelope){
+  const entry = state.peer;
+  if (!entry || !entry.ready || !entry.aesKey) return;
+  entry.dc.send(await sealEnvelope(entry, envelope));
+}
+async function handlePeerMessage(buf){
+  const entry = state.peer;
+  if (!entry || !entry.aesKey) return;
+  const env = await openEnvelope(entry, buf);
+  switch (env.t) {
+    case "chat":
+      state.history.push({ from: "peer", nick: state.peerNick, text: env.text, ts: Date.now() });
+      appendMessage("peer", env.text, state.peerId);
+      break;
+    case "screenAlert":
+      appendSystem(`⚠️ ${state.peerNick}, схоже, зробив(ла) скріншот (PrintScreen)`);
+      showShield(`⚠️ ${state.peerNick} міг(ла) зробити скріншот`, 3000);
+      break;
+  }
+}
+/* ---- SAS-звірка (Short Authentication String): чат заблокований, поки код не підтверджено вголос ---- */
+function showSasBar(){
+  $("sasCode").textContent = state.peer.fingerprint || "…";
+  $("sasBar").classList.remove("hidden");
+  $("chatInput").disabled = true; $("btnSend").disabled = true;
+}
+function confirmSas(){
+  state.sasConfirmed = true;
+  $("sasBar").classList.add("hidden");
+  $("chatInput").disabled = false; $("btnSend").disabled = false;
+  appendSystem("Код підтверджено співрозмовником вголос — з'єднання перевірено.");
+}
+
+/* ================= КОЛЕКТИВНИЙ ДЗВІНОК (group-режим) =================
+   Мій мікрофон/камера додаються в SDP заздалегідь (див. makeOfferBundle/makeAnswerBundle).
+   Формування групи — так само, як домовлялись: перший обмін кодом вручну, далі нові
+   учасники автоматично «знайомляться» з рештою через вже встановлені зашифровані канали
+   (реле сигналу, без жодного сервера — сам текст сигналу ніколи нікуди, крім учасників, не йде). */
+async function getLocalMedia(mic, cam){
+  if (!mic && !cam) return null;
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: !!mic, video: cam ? { width:320, height:240 } : false });
+  } catch (err) {
+    alert("Не вдалося отримати доступ до мікрофона/камери: " + err.message + "\nДзвінок продовжиться лише текстом.");
+    return null;
+  }
+}
+function wireGroupPeer(peerId, nick, pc, dc, aesKey, chachaKey, fingerprint){
+  const entry = { pc, dc, aesKey, chachaKey, fingerprint: fingerprint || null, ready:false, nick: nick || peerId, audioEl:null, videoEl:null };
+  state.peers.set(peerId, entry);
+  dc.binaryType = "arraybuffer";
+  pc.ontrack = (e) => attachRemoteTrack(entry, peerId, e);
+  dc.onopen = () => { entry.ready = true; onGroupPeerReady(peerId); renderGroupParticipants(); };
+  dc.onclose = () => removeGroupPeer(peerId);
+  pc.onconnectionstatechange = () => { if (["failed","closed","disconnected"].includes(pc.connectionState)) removeGroupPeer(peerId); };
+  dc.onmessage = (e) => handleGroupMessage(peerId, e.data).catch((err) => console.error("group msg error", err));
+  return entry;
+}
+function removeGroupPeer(peerId){
+  const entry = state.peers.get(peerId);
+  if (!entry) return;
+  appendGroupSystem((entry.nick || peerId) + " вийшов(ла) з дзвінка");
+  if (entry.audioEl) entry.audioEl.remove();
+  if (entry.videoEl) entry.videoEl.remove();
+  state.peers.delete(peerId);
+  renderGroupParticipants();
+}
+function attachRemoteTrack(entry, peerId, e){
+  const stream = e.streams[0];
+  if (e.track.kind === "audio") {
+    if (!entry.audioEl) {
+      const a = document.createElement("audio");
+      a.autoplay = true; a.dataset.peer = peerId;
+      $("callTiles").appendChild(a);
+      entry.audioEl = a;
+    }
+    entry.audioEl.srcObject = stream;
+  } else if (e.track.kind === "video") {
+    if (!entry.videoEl) {
+      const v = document.createElement("video");
+      v.autoplay = true; v.playsInline = true; v.className = "tile-video";
+      v.dataset.peer = peerId;
+      $("callTiles").appendChild(v);
+      entry.videoEl = v;
+    }
+    entry.videoEl.srcObject = stream;
+  }
+}
+async function sendToGroupPeer(peerId, envelope){
+  const entry = state.peers.get(peerId);
+  if (!entry || !entry.ready || !entry.aesKey) return;
+  entry.dc.send(await sealEnvelope(entry, envelope));
+}
+async function broadcastGroup(envelope, exceptId){
+  for (const id of state.peers.keys()) if (id !== exceptId) await sendToGroupPeer(id, envelope);
+}
+function onGroupPeerReady(peerId){
+  const knownIds = [...state.peers.keys()].filter((id) => id !== peerId && state.peers.get(id).ready);
+  if (knownIds.length) sendToGroupPeer(peerId, { t:"peers", ids: knownIds });
+  broadcastGroup({ t:"peers", ids:[peerId] }, peerId);
+  appendGroupSystem((state.peers.get(peerId).nick || peerId) + " приєднався(лась) до дзвінка");
+}
+async function handleGroupMessage(viaId, buf){
+  const entry = state.peers.get(viaId);
+  if (!entry || !entry.aesKey) return;
+  const env = await openEnvelope(entry, buf);
+  switch (env.t) {
+    case "chat":
+      appendGroupMessage(env.from === state.myId ? "me" : "peer", env.text, env.from, env.nick);
+      break;
+    case "peers":
+      for (const otherId of env.ids) {
+        if (otherId !== state.myId && !state.peers.has(otherId) && !state.pendingEdges.has(otherId)) {
+          if (state.myId < otherId) await initiateGroupRelay(otherId, viaId);
+        }
+      }
+      break;
+    case "signal":
+      await handleGroupSignal(env, viaId);
+      break;
+    case "screenAlert":
+      appendGroupSystem(`⚠️ ${entry.nick || viaId}, схоже, зробив(ла) скріншот`);
+      break;
+    case "bye":
+      appendGroupSystem((entry.nick || viaId) + " завершив(-ла) дзвінок");
+      break;
+  }
+}
+async function initiateGroupRelay(targetId, viaId){
+  const { pc, dc, privateKey, bundle } = await makeOfferBundle(state.groupLanOnly);
+  state.pendingEdges.set(targetId, { pc, privateKey, dc });
+  wireGroupPeer(targetId, null, pc, dc, null, null, null);
+  await sendToGroupPeer(viaId, { t:"signal", kind:"offer", from: state.myId, nick: state.myNick, to: targetId, sdp: bundle.sdp, pub: bundle.pub });
+}
+async function handleGroupSignal(env, viaId){
+  if (env.to !== state.myId) {
+    if (state.peers.has(env.to)) await sendToGroupPeer(env.to, env);
+    return;
+  }
+  if (env.kind === "offer") {
+    const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await makeAnswerBundle({ sdp: env.sdp, pub: env.pub }, state.groupLanOnly);
+    const dc = await dcPromise;
+    wireGroupPeer(env.from, env.nick, pc, dc, aesKey, chachaKey, fingerprint);
+    await sendToGroupPeer(viaId, { t:"signal", kind:"answer", from: state.myId, nick: state.myNick, to: env.from, sdp: bundle.sdp, pub: bundle.pub });
+  } else if (env.kind === "answer") {
+    const pending = state.pendingEdges.get(env.from);
+    if (!pending) return;
+    state.pendingEdges.delete(env.from);
+    await pending.pc.setRemoteDescription({ type:"answer", sdp: env.sdp });
+    const secrets = await deriveEdgeSecrets(pending.privateKey, env.pub);
+    const entry = state.peers.get(env.from);
+    if (entry) { entry.aesKey = secrets.aesKey; entry.chachaKey = secrets.chachaKey; entry.fingerprint = secrets.fingerprint; entry.nick = env.nick || env.from; renderGroupParticipants(); }
+  }
+}
+function renderGroupParticipants(){
+  const ready = [...state.peers.entries()].filter(([,e]) => e.ready);
+  $("gPeerLine").textContent = `👥 у дзвінку: ${ready.length + 1}`;
+  $("gPeerList").innerHTML = ready.length
+    ? ready.map(([id,e]) => `• ${e.nick || id} — код: <b>${e.fingerprint || "..."}</b>`).join("<br>")
+    : "(поки більше нікого нема — надішліть код ще комусь)";
+}
+function appendGroupMessage(cls, text, fromId, nick){
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  const color = colorForId(fromId);
+  div.style.borderLeft = "3px solid " + color;
+  if (cls === "peer") {
+    const s = document.createElement("span");
+    s.style.color = color; s.style.fontWeight = "600";
+    s.textContent = "[" + (nick || fromId) + "] ";
+    div.appendChild(s);
+  }
+  const t = document.createElement("span");
+  t.className = "msg-text"; t.textContent = text;
+  attachRevealHandlers(t);
+  div.appendChild(t);
+  $("gmsgs").appendChild(div); $("gmsgs").scrollTop = $("gmsgs").scrollHeight;
+}
+function appendGroupSystem(text){
+  const div = document.createElement("div");
+  div.className = "msg sys"; div.textContent = text;
+  $("gmsgs").appendChild(div); $("gmsgs").scrollTop = $("gmsgs").scrollHeight;
+}
+async function sendGroupChatMessage(text){
+  appendGroupMessage("me", text, state.myId, state.myNick);
+  await broadcastGroup({ t:"chat", from: state.myId, nick: state.myNick, text });
+}
+function toggleMic(){
+  if (!state.localStream) { alert("Мікрофон не був увімкнений при вході в дзвінок."); return; }
+  const tracks = state.localStream.getAudioTracks();
+  if (!tracks.length) { alert("Мікрофон не був увімкнений при вході в дзвінок."); return; }
+  const enabled = !tracks[0].enabled;
+  tracks.forEach((t) => (t.enabled = enabled));
+  $("btnMicToggle").textContent = "🎙️ Мікрофон: " + (enabled ? "увімк." : "вимк.");
+}
+async function inviteMoreGroup(){
+  showPanel("createPanel");
+  setStatus("createStatus", "Готуємо запрошення...");
+  const { pc, dc, privateKey, bundle } = await makeOfferBundle(state.groupLanOnly);
+  state.pending = { pc, privateKey, dc };
+  $("offerCode").value = b64(te.encode(JSON.stringify(bundle)));
+  setStatus("createStatus", "Код готовий. Надішліть новому учаснику дзвінка.");
+}
+function leaveGroupCall(){
+  for (const entry of state.peers.values()) {
+    try { entry.pc.close(); } catch {}
+    if (entry.audioEl) entry.audioEl.remove();
+    if (entry.videoEl) entry.videoEl.remove();
+  }
+  state.peers.clear();
+  state.pendingEdges.clear();
+  if (state.localStream) { state.localStream.getTracks().forEach((t) => t.stop()); state.localStream = null; }
+  $("callTiles").innerHTML = ""; $("gmsgs").innerHTML = "";
+  showPanel("home");
+}
+
+/* ---- UI helpers ---- */
+function showPanel(id){
+  for (const p of ["home","createPanel","joinPanel","chatPanel","groupPanel"]) $(p).classList.toggle("hidden", p !== id);
+}
+function setStatus(id, text, isErr){ const el=$(id); el.textContent=text; el.className="status"+(isErr?" err":""); }
+function colorForId(id){
+  let h = 0;
+  for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return `hsl(${h % 360} 70% 62%)`;
+}
+function attachRevealHandlers(el){
+  let touchTimer = null;
+  el.addEventListener("mouseenter", () => el.classList.add("revealed"));
+  el.addEventListener("mouseleave", () => el.classList.remove("revealed"));
+  el.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    el.classList.toggle("revealed");
+    clearTimeout(touchTimer);
+    if (el.classList.contains("revealed")) touchTimer = setTimeout(() => el.classList.remove("revealed"), 5000);
+  }, { passive:false });
+}
+function appendMessage(cls, text, from){
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  const color = colorForId(from);
+  div.style.borderLeft = "3px solid " + color;
+  if (cls === "peer") {
+    const nickSpan = document.createElement("span");
+    nickSpan.style.color = color;
+    nickSpan.style.fontWeight = "600";
+    nickSpan.textContent = "[" + (state.peerNick || from) + "] ";
+    div.appendChild(nickSpan);
+  }
+  const textSpan = document.createElement("span");
+  textSpan.className = "msg-text";
+  textSpan.textContent = text;
+  attachRevealHandlers(textSpan);
+  div.appendChild(textSpan);
+  $("msgs").appendChild(div); $("msgs").scrollTop = $("msgs").scrollHeight;
+}
+function updateWatermark(){
+  const wm = $("watermark");
+  if (!wm) return;
+  const line = `${state.myNick} · ${state.myId} · ${new Date().toLocaleString("uk-UA")}  `;
+  wm.textContent = line.repeat(60);
+}
+let shieldAutoHide = null;
+function showShield(text, autoHideMs){
+  const el = $("shield");
+  el.textContent = text;
+  el.classList.remove("hidden");
+  clearTimeout(shieldAutoHide);
+  if (autoHideMs) shieldAutoHide = setTimeout(() => el.classList.add("hidden"), autoHideMs);
+}
+function hideShield(){ $("shield").classList.add("hidden"); clearTimeout(shieldAutoHide); }
+function appendSystem(text){
+  const div = document.createElement("div");
+  div.className = "msg sys"; div.textContent = text;
+  $("msgs").appendChild(div); $("msgs").scrollTop = $("msgs").scrollHeight;
+}
+function renderPeerCount(){
+  const ok = state.peer && state.peer.ready;
+  $("peerLine").textContent = ok ? `👤 з'єднано: ${state.peerNick}` : "👤 з'єднання ще нема";
+  $("peerList").innerHTML = ok
+    ? `код перевірки: <b>${state.peer.fingerprint || "..."}</b>`
+    : "";
+}
+
+/* ---- Перший (ручний) обмін кодами: той, хто створює запрошення (обидва режими) ---- */
+async function createRoom(){
+  resolveNick();
+  const lanOnly = $("lanOnly").checked;
+  if (state.mode === "group") {
+    state.groupLanOnly = lanOnly;
+    state.localStream = await getLocalMedia($("micOn").checked, $("camOn").checked);
+  }
+  showPanel("createPanel");
+  setStatus("createStatus", "Готуємо з'єднання...");
+  const { pc, dc, privateKey, bundle } = await makeOfferBundle(lanOnly);
+  state.pending = { pc, privateKey, dc };
+  $("offerCode").value = b64(te.encode(JSON.stringify(bundle)));
+  setStatus("createStatus", "Код готовий. Надішліть його " + (state.mode === "group" ? "учаснику дзвінка" : "співрозмовнику") + ".");
+}
+async function completeRoom(){
+  try {
+    setStatus("createStatus", "Підключаємось...");
+    const payload = JSON.parse(td.decode(unb64($("answerInput").value)));
+    const pending = state.pending;
+    state.pending = null;
+    await pending.pc.setRemoteDescription({ type:"answer", sdp: payload.sdp });
+    const secrets = await deriveEdgeSecrets(pending.privateKey, payload.pub);
+    if (state.mode === "group") {
+      wireGroupPeer(payload.id, payload.nick, pending.pc, pending.dc, secrets.aesKey, secrets.chachaKey, secrets.fingerprint);
+      showPanel("groupPanel"); renderGroupParticipants();
+    } else {
+      wirePeer(payload.id, payload.nick, pending.pc, pending.dc, secrets.aesKey, secrets.chachaKey, secrets.fingerprint);
+    }
+    $("answerInput").value = "";
+  } catch (err) {
+    setStatus("createStatus", "Код не підходить: " + err.message, true);
+  }
+}
+
+/* ---- Перший (ручний) обмін кодами: той, хто приєднується (обидва режими) ---- */
+async function joinRoom(){
+  try {
+    resolveNick();
+    const lanOnly = $("lanOnly").checked;
+    if (state.mode === "group") {
+      state.groupLanOnly = lanOnly;
+      state.localStream = await getLocalMedia($("micOn").checked, $("camOn").checked);
+    }
+    setStatus("joinStatus", "Обробляємо код...");
+    const payload = JSON.parse(td.decode(unb64($("offerInput").value)));
+    const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await makeAnswerBundle(payload, lanOnly);
+    const dc = await dcPromise;
+    if (state.mode === "group") {
+      wireGroupPeer(payload.id, payload.nick, pc, dc, aesKey, chachaKey, fingerprint);
+      showPanel("groupPanel"); renderGroupParticipants();
+    } else {
+      wirePeer(payload.id, payload.nick, pc, dc, aesKey, chachaKey, fingerprint);
+    }
+    $("answerCode").value = b64(te.encode(JSON.stringify(bundle)));
+    setStatus("joinStatus", "Код готовий, надішліть назад. З'єднання відкриється автоматично.");
+  } catch (err) {
+    setStatus("joinStatus", "Код не підходить: " + err.message, true);
+  }
+}
+
+/* ---- Чат (solo) ---- */
+async function sendChatMessage(text){
+  if (!state.sasConfirmed) { alert("Спершу звірте й підтвердьте код перевірки вгорі — так ви впевнитесь, що з'єднання ніхто не підмінив."); return; }
+  appendMessage("me", text, state.myId);
+  state.history.push({ from: "me", nick: state.myNick, text, ts: Date.now() });
+  await sendToPeer({ t:"chat", text });
+}
+
+/* ---- Завершення розмови: жодного автозбереження, просто закриваємо канал ---- */
+function leaveAndArchive(){
+  if (state.peer && state.peer.pc) { try { state.peer.pc.close(); } catch {} }
+  state.peer = null; state.peerId = null; state.peerNick = ""; state.sasConfirmed = false;
+  appendSystem("Розмову завершено. Якщо не зберегли чат — його вміст вже ніде не лишився.");
+  renderPeerCount();
+}
+
+/* ---- Прив'язка UI ---- */
+function updateModeUI(){
+  const group = state.mode === "group";
+  $("groupMediaRow").style.display = group ? "flex" : "none";
+  $("btnCreate").textContent = group ? "🆕 Створити дзвінок" : "🆕 Створити запрошення";
+}
+$("modeSolo").addEventListener("change", () => { if ($("modeSolo").checked) { state.mode = "solo"; updateModeUI(); } });
+$("modeGroup").addEventListener("change", () => { if ($("modeGroup").checked) { state.mode = "group"; updateModeUI(); } });
+$("btnCreate").onclick = () => createRoom().catch((e)=>setStatus("createStatus", e.message, true));
+$("btnJoin").onclick = () => showPanel("joinPanel");
+$("btnComplete").onclick = () => completeRoom();
+$("btnGenAnswer").onclick = () => joinRoom();
+$("copyOffer").onclick = () => navigator.clipboard?.writeText($("offerCode").value).catch(()=>{});
+$("copyAnswer").onclick = () => navigator.clipboard?.writeText($("answerCode").value).catch(()=>{});
+$("btnSaveChat").onclick = () => exportChatWithPassword();
+$("btnLeave").onclick = () => leaveAndArchive();
+$("btnSend").onclick = () => { const v=$("chatInput").value.trim(); if(!v) return; $("chatInput").value=""; sendChatMessage(v); };
+$("chatInput").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("btnSend").click(); });
+$("btnSasConfirm").onclick = () => confirmSas();
+$("restoreFiles").addEventListener("change",(e)=> { if (e.target.files[0]) importChatFromFile(e.target.files[0]); });
+$("anonMode").addEventListener("change", () => { $("nickInput").disabled = $("anonMode").checked; });
+$("shield").addEventListener("click", () => hideShield());
+/* ---- Прив'язка UI: колективний дзвінок ---- */
+$("btnInviteMoreGroup").onclick = () => inviteMoreGroup().catch((e)=>alert(e.message));
+$("btnLeaveGroup").onclick = () => leaveGroupCall();
+$("btnMicToggle").onclick = () => toggleMic();
+$("gBtnSend").onclick = () => { const v=$("gChatInput").value.trim(); if(!v) return; $("gChatInput").value=""; sendGroupChatMessage(v); };
+$("gChatInput").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("gBtnSend").click(); });
+
+/* ---- Антискрін (чесно: надійно ловиться лише PrintScreen на Windows) ---- */
+window.addEventListener("keyup", (e) => {
+  if (e.key !== "PrintScreen") return;
+  if (state.peer) {
+    appendSystem("Ви, можливо, зробили скріншот (PrintScreen)");
+    showShield("🚨 Скріншот? Співрозмовника попереджено", 3000);
+    sendToPeer({ t:"screenAlert" });
+  }
+  if (state.peers.size) {
+    appendGroupSystem("Ви, можливо, зробили скріншот (PrintScreen)");
+    broadcastGroup({ t:"screenAlert" });
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  if (!state.peer) return;
+  if (document.hidden) showShield("🙈 Вкладка згорнута — вміст приховано", 0);
+  // повернення з фону: щит лишається, поки не натиснуть (не тихе розкриття)
+});
+setInterval(() => { if (!$("chatPanel").classList.contains("hidden")) updateWatermark(); }, 60000);
+renderPeerCount();
+
+/* ==================== ІКОНКА Й ЯРЛИК НА ЕКРАН ==================== */
+function store(key,val){ try{ val===undefined?localStorage.removeItem(key):localStorage.setItem(key,val); }catch{} }
+function read(key){ try{ return localStorage.getItem(key); }catch{ return null; } }
+
+/* Іконка застосунку: один вбудований майстер, решта розмірів малюється на льоту */
+const ICON_MASTER="data:image/jpeg;base64,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";
+let _master=null; const _iconCache={};
+function _canvasIcon(size,maskable,fmt){
+  const cv=document.createElement("canvas"); cv.width=cv.height=size;
+  const x=cv.getContext("2d");
+  const S=_master.width, C=S*0.52, O=(S-C)/2, OY=O+S*0.03;
+  if(maskable){
+    x.fillStyle="#05080f"; x.fillRect(0,0,size,size);
+    const k=size*0.64, o=(size-k)/2;
+    x.drawImage(_master,O,OY,C,C,o,o,k,k);
+  } else if(size<=96){
+    x.drawImage(_master,O,OY,C,C,0,0,size,size);
+  } else {
+    x.drawImage(_master,0,0,size,size);
+  }
+  return fmt==="png" ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg",0.88);
+}
+function drawIcon(size,maskable,fmt){
+  if(!_master) return ICON_MASTER;
+  const key=size+(maskable?"m":"")+(fmt||"");
+  return _iconCache[key] || (_iconCache[key]=_canvasIcon(size,maskable,fmt));
+}
+function iconsReady(){
+  return new Promise((res)=>{
+    const im=new Image();
+    im.onload=()=>{ _master=im; res(); };
+    im.onerror=()=>res();
+    im.src=ICON_MASTER;
+  });
+}
+
+const UA=navigator.userAgent;
+const isIOS=/iPad|iPhone|iPod/.test(UA)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const isAndroid=/Android/.test(UA);
+const isLinux=/Linux|X11/.test(UA)&&!isAndroid;
+const isWin=/Windows NT/.test(UA);
+const isMac=/Macintosh|Mac OS X/.test(UA)&&!isIOS;
+const isInApp=/FBAN|FBAV|Instagram|Line\//i.test(UA)||/Telegram|WhatsApp|Viber|MicroMessenger/i.test(UA);
+const isStandalone=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+const isFileUrl=location.protocol==="file:";
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",(e)=>{ e.preventDefault(); deferredPrompt=e; });
+
+const typeOf=(u)=>u.slice(5,u.indexOf(";"));
+(async function setupIcons(){
+  try{
+    await iconsReady();
+    const ic=drawIcon(180,false);
+    $("howIcon").src=ic;
+    const apple=document.createElement("link");
+    apple.rel="apple-touch-icon"; apple.href=ic; document.head.appendChild(apple);
+    const fav=document.createElement("link");
+    fav.rel="icon"; fav.href=drawIcon(64,false); fav.type=typeOf(fav.href);
+    document.head.appendChild(fav);
+    if(!isFileUrl){
+      const i192=drawIcon(192,false), i512=drawIcon(512,false), i512m=drawIcon(512,true);
+      const mf={name:"ParanoicCrypt",short_name:"ParanoicCrypt",lang:"uk",
+        description:"Ховає файл у картинку",
+        start_url:location.href,scope:"./",display:"standalone",
+        background_color:"#070b14",theme_color:"#0a6cff",
+        icons:[{src:i192,sizes:"192x192",type:typeOf(i192)},
+               {src:i512,sizes:"512x512",type:typeOf(i512)},
+               {src:i512m,sizes:"512x512",type:typeOf(i512m),purpose:"maskable"}]};
+      const link=document.createElement("link");
+      link.rel="manifest";
+      link.href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:"application/manifest+json"}));
+      document.head.appendChild(link);
+    }
+    /* Офлайн для розміщеної версії: після одного відкриття сторінка
+       кешується і працює без мережі — це єдиний шлях офлайну на iPhone. */
+    if(!isFileUrl && "serviceWorker" in navigator){
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+    }
+  }catch{}
+})();
+
+/* ---------- файли-ярлики під кожну систему ---------- */
+function dataUriToBlob(uri){
+  const parts=uri.split(","), head=parts[0], b64=parts[1];
+  const bin=atob(b64), arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:head.slice(5,head.indexOf(";"))});
+}
+function dl(what,name,mime){
+  const blob = what instanceof Blob ? what : new Blob([what],{type:mime||"text/plain"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function homeDir(){
+  return (isFileUrl && /^\/home\/[^/]+\//.test(location.pathname))
+    ? location.pathname.split("/").slice(0,3).join("/") : "$HOME";
+}
+function desktopFileText(){
+  return "[Desktop Entry]\nType=Application\nVersion=1.0\nName=ParanoicCrypt\n"+
+         "GenericName=Шифратор файлів\nComment=Ховає файл у картинку\n"+
+         "Exec=xdg-open \""+location.href+"\"\n"+
+         "Icon="+homeDir()+"/.local/share/icons/paranoiccrypt.png\n"+
+         "Terminal=false\nStartupNotify=false\nCategories=Utility;\n";
+}
+function linuxCommand(){
+  return "mkdir -p ~/.local/share/applications ~/.local/share/icons && "+
+         "for d in ~/Завантаження ~/Downloads; do "+
+         "[ -f \"$d/paranoiccrypt.png\" ] && mv \"$d/paranoiccrypt.png\" ~/.local/share/icons/; "+
+         "[ -f \"$d/ParanoicCrypt.desktop\" ] && mv \"$d/ParanoicCrypt.desktop\" ~/.local/share/applications/; "+
+         "done; chmod +x ~/.local/share/applications/ParanoicCrypt.desktop && "+
+         "update-desktop-database ~/.local/share/applications 2>/dev/null; echo Готово";
+}
+function urlShortcutText(){
+  return "[InternetShortcut]\r\nURL="+location.href+"\r\nIconIndex=0\r\n"+
+         "IconFile=%USERPROFILE%\\Downloads\\paranoiccrypt.ico\r\n";
+}
+function weblocText(){
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'+
+    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'+
+    '<plist version="1.0"><dict><key>URL</key><string>'+location.href+'</string></dict></plist>\n';
+}
+/* .ico з PNG усередині — Windows Vista і новіші це розуміють */
+async function makeIcoBlob(){
+  const png=dataUriToBlob(drawIcon(192,false,"png"));
+  const data=new Uint8Array(await png.arrayBuffer());
+  const out=new Uint8Array(22+data.length), dv=new DataView(out.buffer);
+  dv.setUint16(0,0,true); dv.setUint16(2,1,true); dv.setUint16(4,1,true);
+  out[6]=192; out[7]=192; out[8]=0; out[9]=0;
+  dv.setUint16(10,1,true); dv.setUint16(12,32,true);
+  dv.setUint32(14,data.length,true); dv.setUint32(18,22,true);
+  out.set(data,22);
+  return new Blob([out],{type:"image/x-icon"});
+}
+
+/* ---------- кроки й дії по системах ---------- */
+function nativeBtn(){
+  if(!deferredPrompt) return null;
+  return {text:"⚡ Встановити одним натисканням", cls:"primary", fn:async()=>{
+    const d=deferredPrompt; deferredPrompt=null;
+    d.prompt(); try{ await d.userChoice; }catch{}
+    closeHowModal();
+  }};
+}
+const OS_INFO={
+  android:{title:"🤖 Android",
+    steps:()=> deferredPrompt
+      ? ["Натисни кнопку нижче — з'явиться системне вікно","Підтвердь «Встановити»","Іконка з'явиться на головному екрані"]
+      : ["Натисни «⋮» вгорі праворуч","Обери «Додати на головний екран»","Підтвердь «Додати»"],
+    actions:()=>[nativeBtn()].filter(Boolean)},
+  ios:{title:"🍎 iPhone / iPad",
+    steps:()=>["Натисни ⬆️ «Поділитися» внизу екрана Safari","Гортай донизу до «На екран «Дім»»","Натисни «Додати» вгорі праворуч"],
+    actions:()=>[]},
+  win:{title:"🪟 Windows",
+    steps:()=> deferredPrompt
+      ? ["Натисни кнопку нижче — Chrome або Edge запропонує встановити","Підтвердь «Встановити»","Програма з'явиться в меню «Пуск»"]
+      : ["Натисни обидві кнопки нижче — файли підуть у теку «Завантаження»",
+         "Перетягни «ParanoicCrypt.url» на робочий стіл",
+         "Готово — подвійний клік відкриває програму"],
+    actions:()=>{
+      const a=[nativeBtn()].filter(Boolean);
+      a.push({text:"⬇️ Ярлик на робочий стіл",cls:"primary",fn:()=>dl(urlShortcutText(),"ParanoicCrypt.url","application/internet-shortcut")});
+      a.push({text:"⬇️ Іконка (.ico)",cls:"primary gold",fn:async(b)=>{ b.disabled=true; dl(await makeIcoBlob(),"paranoiccrypt.ico"); b.disabled=false; }});
+      return a;}},
+  mac:{title:"🍏 macOS",
+    steps:()=> deferredPrompt
+      ? ["Натисни кнопку нижче — браузер запропонує встановити","Підтвердь","Значок з'явиться в Launchpad"]
+      : ["У Safari: меню «Файл» → «Додати в Dock»",
+         "Або натисни кнопку нижче і перетягни файл на робочий стіл",
+         "Подвійний клік — і сторінка відкривається"],
+    actions:()=>{
+      const a=[nativeBtn()].filter(Boolean);
+      a.push({text:"⬇️ Ярлик для Mac (.webloc)",cls:"primary",fn:()=>dl(weblocText(),"ParanoicCrypt.webloc","text/xml")});
+      return a;}},
+  linux:{title:"🐧 Linux / Ubuntu",
+    steps:()=>["Натисни обидві кнопки нижче — ярлик та іконка збережуться в «Завантаження»",
+               "Натисни «Копіювати команду», відкрий Термінал (Ctrl+Alt+T) і встав її",
+               "Готово: «ParanoicCrypt» буде в меню програм"],
+    actions:()=>[
+      {text:"⬇️ Ярлик (.desktop)",cls:"primary",fn:()=>dl(desktopFileText(),"ParanoicCrypt.desktop","application/x-desktop")},
+      {text:"⬇️ Іконка (.png)",cls:"primary gold",fn:()=>dl(dataUriToBlob(drawIcon(192,false,"png")),"paranoiccrypt.png")},
+      {text:"📋 Копіювати команду для Термінала",cls:"ghost",fn:(btn)=>{
+        if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(linuxCommand()).catch(()=>{});
+        btn.textContent="✅ Скопійовано — встав у Термінал";
+        setTimeout(()=>{ btn.textContent="📋 Копіювати команду для Термінала"; },2500);
+      }}]}
+};
+function detectOs(){
+  if(isIOS) return "ios";
+  if(isAndroid) return "android";
+  if(isWin) return "win";
+  if(isMac) return "mac";
+  if(isLinux) return "linux";
+  return null;
+}
+function showOs(key){
+  const info=OS_INFO[key]; if(!info) return;
+  $("howTitle").textContent=info.title;
+  const ol=$("installSteps"); ol.innerHTML="";
+  const steps = isInApp
+    ? ["Цей застосунок відкрив сторінку у власному браузері","Натисни «⋯» і обери «Відкрити в Safari» або Chrome","Там повтори — усе запрацює"]
+    : info.steps();
+  for(const t of steps){ const li=document.createElement("li"); li.textContent=t; ol.appendChild(li); }
+  const box=$("osActions"); box.innerHTML="";
+  if(!isInApp) for(const act of info.actions()){
+    const b=document.createElement("button");
+    b.className=act.cls; b.textContent=act.text;
+    b.onclick=()=>act.fn(b);
+    box.appendChild(b);
+  }
+  $("osGrid").classList.add("hidden");
+  $("osPane").classList.remove("hidden");
+}
+function openHowModal(){
+  $("howTitle").textContent="Додати на екран";
+  $("osPane").classList.add("hidden");
+  $("osGrid").classList.remove("hidden");
+  const me=detectOs();
+  for(const b of $("osGrid").children) b.classList.toggle("me", b.dataset.os===me);
+  $("howBack").classList.remove("hidden");
+}
+function closeHowModal(){ $("howBack").classList.add("hidden"); }
+$("osGrid").addEventListener("click",(e)=>{
+  const b=e.target.closest("button[data-os]"); if(b) showOs(b.dataset.os);
+});
+$("btnBackOs").onclick=()=>{ $("osPane").classList.add("hidden"); $("osGrid").classList.remove("hidden"); $("howTitle").textContent="Додати на екран"; };
+$("howClose").onclick=closeHowModal;
+$("howOk").onclick=closeHowModal;
+$("howBack").addEventListener("click",(e)=>{ if(e.target===$("howBack")) closeHowModal(); });
+document.addEventListener("keydown",(e)=>{ if(e.key==="Escape"&&!$("howBack").classList.contains("hidden")) closeHowModal(); });
+$("btnInstall").onclick=openHowModal;
+if(!isStandalone) $("btnInstall").classList.remove("hidden");
+
+</script>
+</body>
+</html>

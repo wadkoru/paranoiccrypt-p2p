@@ -38,10 +38,6 @@
   .info-details .note{padding:0 14px 14px}
   .text-fallback>*:not(summary){margin-left:14px;margin-right:14px}
   .text-fallback>.row:last-of-type,.text-fallback>textarea:last-child{margin-bottom:14px}
-  .pin-box{display:flex;align-items:center;gap:10px;background:rgba(255,180,60,.08);
-    border:1px solid rgba(255,180,60,.45);border-radius:12px;padding:12px 16px;margin:10px 0}
-  .pin-box .pin-label{font-size:.85rem;color:var(--dim);font-weight:600}
-  .pin-box span:last-child{font-family:var(--mono);font-size:1.4rem;font-weight:800;letter-spacing:3px;color:#ffd580}
   textarea{width:100%;box-sizing:border-box;min-height:84px;font-family:ui-monospace,Menlo,Consolas,monospace;
     font-size:.82rem;background:var(--panel2);color:var(--text);border:1px solid var(--line2);border-radius:12px;
     padding:11px;resize:vertical}
@@ -223,17 +219,13 @@
 </section>
 
 <section id="createPanel" class="hidden">
-  <p><b>Крок 1.</b> Зашифрований файл запрошення готовий і вже скачався. Надішліть його
-     тому, кого запрошуєте (будь-яким каналом — вкладенням), а <b>PIN нижче скажіть окремо</b>
-     (вголос, іншим каналом) — без нього файл нічого не важить, навіть для того каналу,
-     яким ви його надсилаєте.</p>
-  <div class="pin-box"><span class="pin-label">PIN:</span> <span id="pairPinOut">——————</span></div>
+  <p><b>Крок 1.</b> Файл запрошення вже скачався — надішліть його тому, кого запрошуєте
+     (будь-яким каналом, вкладенням), і просто чекайте тут.</p>
   <div class="row"><button class="ghost" id="btnRedownloadOffer">📁 Скачати файл запрошення ще раз</button></div>
-  <p><b>Крок 2.</b> Отримали файл-відповідь — оберіть його й введіть той самий PIN:</p>
+  <p><b>Крок 2.</b> Коли отримаєте файл-відповідь — оберіть його тут:</p>
   <div class="row">
     <input type="file" id="answerFileInput" accept=".pcxlink">
   </div>
-  <div class="row"><input id="answerPinIn" placeholder="PIN з кроку 1" inputmode="numeric" maxlength="6"></div>
   <div class="row"><button class="primary" id="btnCompleteFile">🔗 З'єднатися</button></div>
   <details class="text-fallback">
     <summary>Немає спільного каналу для файлів? Текстовий код (довший, вставляти вручну)</summary>
@@ -248,15 +240,13 @@
 </section>
 
 <section id="joinPanel" class="hidden">
-  <p><b>Крок 1.</b> Оберіть файл запрошення, який вам надіслали, і введіть PIN, який вам
-     сказали окремо (вголос, іншим каналом):</p>
+  <p><b>Крок 1.</b> Оберіть файл запрошення, який вам надіслали:</p>
   <div class="row">
     <input type="file" id="offerFileInput" accept=".pcxlink">
   </div>
-  <div class="row"><input id="offerPinIn" placeholder="PIN від того, хто запросив" inputmode="numeric" maxlength="6"></div>
-  <div class="row"><button class="primary" id="btnGenAnswerFile">🔓 Розшифрувати й підготувати відповідь</button></div>
+  <div class="row"><button class="primary" id="btnGenAnswerFile">🔗 Підготувати відповідь</button></div>
   <div id="answerFileOut" class="hidden">
-    <p><b>Крок 2.</b> Файл-відповідь скачався — надішліть його назад. PIN той самий, що й вище.</p>
+    <p><b>Крок 2.</b> Файл-відповідь скачався — надішліть його назад тим самим каналом.</p>
     <div class="row"><button class="ghost" id="btnRedownloadAnswer">📁 Скачати файл відповіді ще раз</button></div>
   </div>
   <details class="text-fallback">
@@ -392,7 +382,6 @@ const state = {
   pending: null,        // {pc, privateKey, dc?} — під час встановлення першого з'єднання (обидва режими)
   pendingBundle: null,  // мій offer/answer bundle як об'єкт — для повторного скачування файлу
   pendingAnswerBundle: null,
-  pairPin: null,        // PIN поточного файлового обміну (8 цифр)
   history: []
 };
 function resolveNick(){
@@ -413,40 +402,22 @@ async function keyFromPassword(password, salt){
   );
 }
 
-/* ---- Файловий обмін запрошенням/відповіддю замість вставляння тексту вручну.
-   Файл сам по собі — просто випадкові байти без PIN: якщо його перехопили в каналі,
-   яким він переданий (скріншот чату, бекап у хмару тощо), без PIN, сказаного ОКРЕМО
-   (вголос), розкрити його не можна. Чесно: PIN лише 8 цифр — це заслон від випадкового
-   перехоплення каналу передачі файла, а не криптографічний захист рівня самого з'єднання
-   (те дає ECDH P-256 після встановлення WebRTC-каналу, звірене SAS-кодом). ---- */
-function genPin(){
-  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 100000000;
-  return String(n).padStart(8,"0");
-}
-function formatPin(pin){ return pin.slice(0,4)+"-"+pin.slice(4); }
-async function encryptBundleFile(obj, pin){
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await keyFromPassword(pin, salt);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, te.encode(JSON.stringify(obj)));
+/* ---- Файловий обмін запрошенням/відповіддю замість вставляння тексту вручну —
+   просто файл в один бік, без пароля й без PIN: реальна безпека тут не від цього файлу,
+   а від ECDH P-256 (після встановлення WebRTC-каналу), звіреного SAS-кодом нижче. Цей
+   файл — лише зручніший спосіб передати той самий вміст, що й текстовий код (він і зараз
+   не секретний — SDP/ICE не містить ключів шифрування розмови). ---- */
+function buildBundleFile(obj){
   const magic = te.encode("PCXLINK1");
-  const out = new Uint8Array(magic.length + salt.length + iv.length + ct.byteLength);
-  let o = 0;
-  out.set(magic, o); o += magic.length;
-  out.set(salt, o); o += salt.length;
-  out.set(iv, o); o += iv.length;
-  out.set(new Uint8Array(ct), o);
+  const body = te.encode(JSON.stringify(obj));
+  const out = new Uint8Array(magic.length + body.length);
+  out.set(magic, 0); out.set(body, magic.length);
   return out;
 }
-async function decryptBundleFile(buf, pin){
+function readBundleFile(buf){
   const b = new Uint8Array(buf);
-  if (td.decode(b.slice(0,8)) !== "PCXLINK1") throw new Error("це не файл-запрошення ParanoicCrypt P2P");
-  const salt = b.slice(8,24), iv = b.slice(24,36), ct = b.slice(36);
-  const key = await keyFromPassword(pin, salt);
-  let pt;
-  try { pt = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, ct); }
-  catch { throw new Error("невірний PIN або пошкоджений файл"); }
-  return JSON.parse(td.decode(pt));
+  if (td.decode(b.slice(0,8)) !== "PCXLINK1") throw new Error("це не файл запрошення/відповіді ParanoicCrypt P2P");
+  return JSON.parse(td.decode(b.slice(8)));
 }
 function downloadBytes(bytes, filename){
   const blob = new Blob([bytes], {type:"application/octet-stream"});
@@ -926,11 +897,8 @@ async function inviteMoreGroup(){
   state.pending = { pc, privateKey, dc };
   state.pendingBundle = bundle;
   $("offerCode").value = b64(te.encode(JSON.stringify(bundle)));
-  state.pairPin = genPin();
-  $("pairPinOut").textContent = formatPin(state.pairPin);
-  const fileBytes = await encryptBundleFile(bundle, state.pairPin);
-  downloadBytes(fileBytes, "zaproshennya.pcxlink");
-  setStatus("createStatus", "Файл і PIN готові. Надішліть файл новому учаснику, а PIN — окремо.");
+  downloadBytes(buildBundleFile(bundle), "zaproshennya.pcxlink");
+  setStatus("createStatus", "Файл готовий. Надішліть його новому учаснику дзвінка й чекайте.");
 }
 function leaveGroupCall(){
   for (const entry of state.peers.values()) {
@@ -1014,7 +982,7 @@ function renderPeerCount(){
 }
 
 /* ---- Перший обмін: той, хто створює запрошення (обидва режими).
-   Основний шлях — зашифрований файл (.pcxlink) + PIN окремим каналом;
+   Основний шлях — файл (.pcxlink), надсилається один раз, в один бік;
    текстовий код лишається як запасний варіант у деталях нижче. ---- */
 async function createRoom(){
   resolveNick();
@@ -1029,11 +997,8 @@ async function createRoom(){
   state.pending = { pc, privateKey, dc };
   state.pendingBundle = bundle;
   $("offerCode").value = b64(te.encode(JSON.stringify(bundle)));
-  state.pairPin = genPin();
-  $("pairPinOut").textContent = formatPin(state.pairPin);
-  const fileBytes = await encryptBundleFile(bundle, state.pairPin);
-  downloadBytes(fileBytes, "zaproshennya.pcxlink");
-  setStatus("createStatus", "Файл і PIN готові. Надішліть файл " + (state.mode === "group" ? "учаснику дзвінка" : "співрозмовнику") + ", а PIN скажіть окремо.");
+  downloadBytes(buildBundleFile(bundle), "zaproshennya.pcxlink");
+  setStatus("createStatus", "Файл готовий. Надішліть його " + (state.mode === "group" ? "учаснику дзвінка" : "співрозмовнику") + " і чекайте тут.");
 }
 async function completeFromPayload(payload){
   const pending = state.pending;
@@ -1061,10 +1026,8 @@ async function completeRoomFromFile(){
   try {
     const f = $("answerFileInput").files[0];
     if (!f) { setStatus("createStatus", "Оберіть файл відповіді.", true); return; }
-    const pin = $("answerPinIn").value.replace(/\D/g,"");
-    if (pin.length !== 8) { setStatus("createStatus", "PIN — 8 цифр.", true); return; }
-    setStatus("createStatus", "Розшифровуємо файл...");
-    const payload = await decryptBundleFile(await f.arrayBuffer(), pin);
+    setStatus("createStatus", "Читаємо файл...");
+    const payload = readBundleFile(await f.arrayBuffer());
     await completeFromPayload(payload);
     setStatus("createStatus", "З'єднано.");
   } catch (err) {
@@ -1105,16 +1068,12 @@ async function joinRoomFromFile(){
   try {
     const f = $("offerFileInput").files[0];
     if (!f) { setStatus("joinStatus", "Оберіть файл запрошення.", true); return; }
-    const pin = $("offerPinIn").value.replace(/\D/g,"");
-    if (pin.length !== 8) { setStatus("joinStatus", "PIN — 8 цифр.", true); return; }
-    setStatus("joinStatus", "Розшифровуємо файл...");
-    const payload = await decryptBundleFile(await f.arrayBuffer(), pin);
+    setStatus("joinStatus", "Читаємо файл...");
+    const payload = readBundleFile(await f.arrayBuffer());
     const lanOnly = $("lanOnly").checked;
     const bundle = await genAnswerFromPayload(payload, lanOnly);
     state.pendingAnswerBundle = bundle;
-    state.pairPin = pin;
-    const fileBytes = await encryptBundleFile(bundle, pin);
-    downloadBytes(fileBytes, "vidpovid.pcxlink");
+    downloadBytes(buildBundleFile(bundle), "vidpovid.pcxlink");
     $("answerFileOut").classList.remove("hidden");
     setStatus("joinStatus", "Файл-відповідь скачався. Надішліть його назад тим самим каналом.");
   } catch (err) {
@@ -1146,25 +1105,16 @@ function updateModeUI(){
 }
 $("modeSolo").addEventListener("change", () => { if ($("modeSolo").checked) { state.mode = "solo"; updateModeUI(); } });
 $("modeGroup").addEventListener("change", () => { if ($("modeGroup").checked) { state.mode = "group"; updateModeUI(); } });
-$("btnCreate").onclick = () => { $("answerFileInput").value=""; $("answerPinIn").value=""; createRoom().catch((e)=>setStatus("createStatus", e.message, true)); };
-$("btnJoin").onclick = () => { $("offerFileInput").value=""; $("offerPinIn").value=""; $("answerFileOut").classList.add("hidden"); showPanel("joinPanel"); };
+$("btnCreate").onclick = () => { $("answerFileInput").value=""; createRoom().catch((e)=>setStatus("createStatus", e.message, true)); };
+$("btnJoin").onclick = () => { $("offerFileInput").value=""; $("answerFileOut").classList.add("hidden"); showPanel("joinPanel"); };
 $("btnComplete").onclick = () => completeRoom();
 $("btnGenAnswer").onclick = () => joinRoom();
 $("copyOffer").onclick = () => navigator.clipboard?.writeText($("offerCode").value).catch(()=>{});
 $("copyAnswer").onclick = () => navigator.clipboard?.writeText($("answerCode").value).catch(()=>{});
 $("btnCompleteFile").onclick = () => completeRoomFromFile();
 $("btnGenAnswerFile").onclick = () => joinRoomFromFile();
-$("btnRedownloadOffer").onclick = async () => {
-  if (!state.pendingBundle || !state.pairPin) return;
-  downloadBytes(await encryptBundleFile(state.pendingBundle, state.pairPin), "zaproshennya.pcxlink");
-};
-$("btnRedownloadAnswer").onclick = async () => {
-  if (!state.pendingAnswerBundle || !state.pairPin) return;
-  downloadBytes(await encryptBundleFile(state.pendingAnswerBundle, state.pairPin), "vidpovid.pcxlink");
-};
-["answerPinIn","offerPinIn"].forEach((id) => {
-  $(id).addEventListener("input", () => { $(id).value = $(id).value.replace(/\D/g,"").slice(0,8); });
-});
+$("btnRedownloadOffer").onclick = () => { if (state.pendingBundle) downloadBytes(buildBundleFile(state.pendingBundle), "zaproshennya.pcxlink"); };
+$("btnRedownloadAnswer").onclick = () => { if (state.pendingAnswerBundle) downloadBytes(buildBundleFile(state.pendingAnswerBundle), "vidpovid.pcxlink"); };
 $("btnSaveChat").onclick = () => exportChatWithPassword();
 $("btnLeave").onclick = () => leaveAndArchive();
 $("btnSend").onclick = () => { const v=$("chatInput").value.trim(); if(!v) return; $("chatInput").value=""; sendChatMessage(v); };

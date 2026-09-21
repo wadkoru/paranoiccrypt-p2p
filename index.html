@@ -4,25 +4,34 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ParanoicCrypt P2P</title>
-<meta name="theme-color" content="#0a6cff">
+<meta name="theme-color" content="#00c853">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ParanoicCrypt">
 <style>
   :root{color-scheme:dark light;
-    --bg:#0d0f13; --panel:#181c23; --panel2:#20252e; --line:#2b313d; --line2:#3a4150;
-    --text:#eee; --dim:#98a2b3; --accent:#0a6cff; --accent2:#00b4ff; --danger:#e05a5a; --ok:#3ecf7a}
+    --bg:#05070a; --panel:#0e1512; --panel2:#151d19; --line:#20302a; --line2:#2c4038;
+    --text:#dcffea; --dim:#84a894; --accent:#00c853; --accent2:#39ff14; --danger:#e05a5a; --ok:#3ecf7a;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","Fira Code","JetBrains Mono",Consolas,monospace}
   *{-webkit-tap-highlight-color:transparent}
   body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;max-width:640px;margin:0 auto;
     padding:16px 16px calc(28px + env(safe-area-inset-bottom));background:var(--bg);color:var(--text);
-    line-height:1.35;-webkit-text-size-adjust:100%}
-  h1{font-size:1.3rem;margin:4px 0 2px;letter-spacing:-.3px}
+    line-height:1.35;-webkit-text-size-adjust:100%;position:relative}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,255,140,.045) 0 1px, transparent 1px 3px),
+      linear-gradient(rgba(0,255,140,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,140,.05) 1px, transparent 1px);
+    background-size:auto, 34px 34px, 34px 34px;
+    -webkit-mask-image:radial-gradient(85% 60% at 50% 5%, #000 40%, transparent 88%);
+            mask-image:radial-gradient(85% 60% at 50% 5%, #000 40%, transparent 88%)}
+  h1{font-size:1.3rem;margin:4px 0 2px;letter-spacing:-.3px;font-family:var(--mono);color:#eafff2}
   .tagline{margin:0 0 12px;color:var(--dim);font-size:.92rem}
   .note{font-size:.85rem;color:var(--dim);line-height:1.5}
   .info-details{margin:0 0 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
   .info-details summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:.9rem;font-weight:600;
-    color:#8fc6ff;display:flex;align-items:center;gap:8px;min-height:24px}
+    color:#7dffb0;display:flex;align-items:center;gap:8px;min-height:24px}
   .info-details summary::-webkit-details-marker{display:none}
   .info-details summary::before{content:"▸";display:inline-block;transition:transform .15s;color:var(--dim)}
   .info-details[open] summary::before{transform:rotate(90deg)}
@@ -46,7 +55,7 @@
   button:hover{background:#2a3140}
   button:active{transform:scale(.97)}
   button:disabled{opacity:.35;cursor:default;transform:none}
-  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:0;color:#fff;box-shadow:0 6px 18px rgba(10,108,255,.28)}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:0;color:#fff;box-shadow:0 6px 18px rgba(0,200,83,.28)}
   button.primary:hover{filter:brightness(1.08)}
   button.ghost{background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--dim)}
   button.ghost:hover{background:rgba(255,255,255,.09);color:var(--text)}
@@ -67,7 +76,7 @@
     height:300px;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px;
     -webkit-overflow-scrolling:touch}
   .msg{max-width:82%;padding:8px 12px;border-radius:12px;background:var(--panel2);font-size:.92rem;word-break:break-word}
-  .msg.me{align-self:flex-end;background:#1b3a63}
+  .msg.me{align-self:flex-end;background:#123a24}
   .msg.sys{align-self:center;background:none;color:#7d8695;font-size:.78rem;padding:2px 8px}
   .msg-text{filter:blur(5px);transition:filter .12s ease;cursor:pointer;-webkit-user-select:none;user-select:none}
   .msg-text.revealed{filter:none;-webkit-user-select:text;user-select:text}
@@ -78,11 +87,11 @@
     border:1px solid var(--line2);background:var(--panel2);color:var(--text);font-size:.95rem}
   #btnSend,#gBtnSend{flex:0 0 54px;min-height:46px;font-size:1.2rem;padding:0}
   section{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
-  .peers{font-size:.88rem;color:#8fc6ff;font-weight:600;margin-bottom:4px}
+  .peers{font-size:.88rem;color:#7dffb0;font-weight:600;margin-bottom:4px}
   .install-card{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:80;
     max-width:536px;margin:0 auto;padding:16px;border-radius:22px;
     background:linear-gradient(165deg,rgba(14,32,62,.98),rgba(9,14,26,.98));
-    border:1px solid rgba(120,180,255,.35);box-shadow:0 22px 60px rgba(0,0,0,.65);
+    border:1px solid rgba(60,255,150,.35);box-shadow:0 22px 60px rgba(0,0,0,.65);
     animation:rise .35s cubic-bezier(.2,.9,.3,1.2)}
   @keyframes rise{from{transform:translateY(120%);opacity:0}to{transform:none;opacity:1}}
   .install-top{display:flex;gap:13px;align-items:center;margin-bottom:12px}
@@ -92,7 +101,7 @@
   .install-row{display:flex;gap:9px}
   .install-row button{flex:1;min-height:50px;border-radius:14px;font-size:1rem;font-weight:700;cursor:pointer;border:0}
   .install-row .no{background:rgba(255,255,255,.07);color:#999;border:1px solid #3a3a3a}
-  .install-row .yes{background:linear-gradient(135deg,#0a6cff,#00b4ff);color:#fff}
+  .install-row .yes{background:linear-gradient(135deg,#00c853,#39ff14);color:#06140c}
   .steps{margin:0 0 13px;padding:0;list-style:none;counter-reset:st}
   .steps li{counter-increment:st;display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;font-size:.95rem}
   .steps li::before{content:counter(st);flex:none;width:25px;height:25px;border-radius:50%;
@@ -103,7 +112,7 @@
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .modal{position:relative;width:100%;max-width:392px;padding:24px 20px 20px;border-radius:26px;text-align:center;
     background:linear-gradient(168deg,rgba(18,38,72,.99),rgba(9,14,26,.99));
-    border:1px solid rgba(120,180,255,.34);box-shadow:0 30px 80px rgba(0,0,0,.7);
+    border:1px solid rgba(60,255,150,.34);box-shadow:0 30px 80px rgba(0,0,0,.7);
     animation:pop .3s cubic-bezier(.2,.9,.3,1.25)}
   @keyframes pop{from{transform:scale(.88);opacity:0}to{transform:none;opacity:1}}
   .modal img{width:76px;height:76px;border-radius:19px;box-shadow:0 10px 26px rgba(0,0,0,.5)}
@@ -117,8 +126,8 @@
     color:#eee;font-size:.88rem;font-weight:600;cursor:pointer;transition:.15s}
   .os-grid button:active{transform:scale(.96)}
   .os-grid button i{font-style:normal;font-size:1.8rem;line-height:1}
-  .os-grid button.me{border-color:rgba(120,180,255,.7);background:linear-gradient(160deg,rgba(10,108,255,.35),rgba(0,180,255,.14))}
-  .os-grid button.me::after{content:"схоже, у тебе";font-size:.64rem;color:#8fc6ff}
+  .os-grid button.me{border-color:rgba(60,255,150,.7);background:linear-gradient(160deg,rgba(0,200,83,.35),rgba(57,255,20,.14))}
+  .os-grid button.me::after{content:"схоже, у тебе";font-size:.64rem;color:#7dffb0}
   .os-grid button:last-child{grid-column:span 2}
   #osActions button{width:100%;margin:0 0 8px}
   #osPane .steps{text-align:left}
@@ -1108,7 +1117,7 @@ const typeOf=(u)=>u.slice(5,u.indexOf(";"));
       const mf={name:"ParanoicCrypt",short_name:"ParanoicCrypt",lang:"uk",
         description:"Ховає файл у картинку",
         start_url:location.href,scope:"./",display:"standalone",
-        background_color:"#070b14",theme_color:"#0a6cff",
+        background_color:"#05070a",theme_color:"#00c853",
         icons:[{src:i192,sizes:"192x192",type:typeOf(i192)},
                {src:i512,sizes:"512x512",type:typeOf(i512)},
                {src:i512m,sizes:"512x512",type:typeOf(i512m),purpose:"maskable"}]};

@@ -3,7 +3,7 @@
    там сторінка і так працює без мережі.
    Свідомо без skipWaiting(): нова версія не підміняє код під час роботи —
    вона застосується лише після повного закриття вкладок. */
-const CACHE = "paranoiccrypt-v3";
+const CACHE = "paranoiccrypt-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {

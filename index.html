@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ParanoicCrypt P2P</title>
 <meta name="theme-color" content="#0a6cff">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -10,30 +10,75 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ParanoicCrypt">
 <style>
-  :root{color-scheme:dark light}
-  body{font-family:system-ui,sans-serif;max-width:680px;margin:0 auto;padding:16px;background:#111;color:#eee}
-  h1{font-size:1.15rem}
-  .note{font-size:.82rem;color:#999;line-height:1.4}
-  textarea{width:100%;box-sizing:border-box;min-height:80px;font-family:monospace;font-size:.75rem;background:#1c1c1c;color:#eee;border:1px solid #444;border-radius:8px;padding:8px}
-  select,input[type=number]{background:#1c1c1c;color:#eee;border:1px solid #444;border-radius:8px;padding:8px}
-  button{padding:9px 14px;border-radius:8px;border:1px solid #555;background:#2a2a2a;color:#eee;font-size:.95rem;cursor:pointer}
-  button:hover{background:#3a3a3a}
-  button:disabled{opacity:.35;cursor:default}
-  .row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;align-items:center}
+  :root{color-scheme:dark light;
+    --bg:#0d0f13; --panel:#181c23; --panel2:#20252e; --line:#2b313d; --line2:#3a4150;
+    --text:#eee; --dim:#98a2b3; --accent:#0a6cff; --accent2:#00b4ff; --danger:#e05a5a; --ok:#3ecf7a}
+  *{-webkit-tap-highlight-color:transparent}
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;max-width:640px;margin:0 auto;
+    padding:16px 16px calc(28px + env(safe-area-inset-bottom));background:var(--bg);color:var(--text);
+    line-height:1.35;-webkit-text-size-adjust:100%}
+  h1{font-size:1.3rem;margin:4px 0 2px;letter-spacing:-.3px}
+  .tagline{margin:0 0 12px;color:var(--dim);font-size:.92rem}
+  .note{font-size:.85rem;color:var(--dim);line-height:1.5}
+  .info-details{margin:0 0 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+  .info-details summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:.9rem;font-weight:600;
+    color:#8fc6ff;display:flex;align-items:center;gap:8px;min-height:24px}
+  .info-details summary::-webkit-details-marker{display:none}
+  .info-details summary::before{content:"▸";display:inline-block;transition:transform .15s;color:var(--dim)}
+  .info-details[open] summary::before{transform:rotate(90deg)}
+  .info-details .note{padding:0 14px 14px}
+  textarea{width:100%;box-sizing:border-box;min-height:84px;font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:.82rem;background:var(--panel2);color:var(--text);border:1px solid var(--line2);border-radius:12px;
+    padding:11px;resize:vertical}
+  textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  select,input[type=number],input[type=text]{background:var(--panel2);color:var(--text);
+    border:1px solid var(--line2);border-radius:10px;padding:11px;font-size:.95rem;box-sizing:border-box}
+  input[type=file]{width:100%;box-sizing:border-box;padding:10px;border:1px dashed var(--line2);
+    border-radius:12px;background:var(--panel2);color:var(--dim);font-size:.88rem}
+  input[type=file]::file-selector-button{min-height:38px;margin-right:10px;padding:8px 14px;
+    border-radius:9px;border:1px solid var(--line2);background:var(--panel);color:var(--text);
+    font-weight:600;cursor:pointer}
+
+  /* ---- кнопки: мінімум 46px висоти — впевнений тап пальцем на будь-якому телефоні ---- */
+  button{min-height:46px;padding:11px 18px;border-radius:12px;border:1px solid var(--line2);
+    background:var(--panel2);color:var(--text);font-size:.95rem;font-weight:600;cursor:pointer;
+    transition:background .15s,transform .08s,opacity .15s;touch-action:manipulation}
+  button:hover{background:#2a3140}
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.35;cursor:default;transform:none}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:0;color:#fff;box-shadow:0 6px 18px rgba(10,108,255,.28)}
+  button.primary:hover{filter:brightness(1.08)}
+  button.ghost{background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--dim)}
+  button.ghost:hover{background:rgba(255,255,255,.09);color:var(--text)}
+  button.danger{background:rgba(224,90,90,.12);border:1px solid rgba(224,90,90,.5);color:#ffb3b3}
+  button.danger:hover{background:rgba(224,90,90,.2)}
+  button.ok{background:linear-gradient(135deg,#1f9e57,var(--ok));border:0;color:#04170c;box-shadow:0 6px 18px rgba(62,207,122,.25)}
+
+  .row{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap;align-items:stretch}
+  .row>button,.row>a.btn{flex:1 1 160px}
+  .row>input{flex:2 1 180px;min-height:46px}
+  .row.tight{gap:8px;margin:8px 0}
+  label.check{display:inline-flex;align-items:center;gap:8px;padding:9px 4px;font-size:.92rem;cursor:pointer;user-select:none}
+  label.check input[type=checkbox],label.check input[type=radio]{width:19px;height:19px;accent-color:var(--accent);cursor:pointer;flex:none}
   .hidden{display:none!important}
+
   #msgsWrap{position:relative}
-  #msgs{border:1px solid #333;border-radius:8px;height:280px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
-  .msg{max-width:78%;padding:6px 10px;border-radius:10px;background:#2a2a2a;font-size:.9rem}
-  .msg.me{align-self:flex-end;background:#245}
-  .msg.sys{align-self:center;background:none;color:#888;font-size:.78rem}
+  #msgs,#gmsgs{border:1px solid var(--line);border-radius:14px;background:var(--panel);
+    height:300px;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px;
+    -webkit-overflow-scrolling:touch}
+  .msg{max-width:82%;padding:8px 12px;border-radius:12px;background:var(--panel2);font-size:.92rem;word-break:break-word}
+  .msg.me{align-self:flex-end;background:#1b3a63}
+  .msg.sys{align-self:center;background:none;color:#7d8695;font-size:.78rem;padding:2px 8px}
   .msg-text{filter:blur(5px);transition:filter .12s ease;cursor:pointer;-webkit-user-select:none;user-select:none}
   .msg-text.revealed{filter:none;-webkit-user-select:text;user-select:text}
-  .watermark{position:absolute;inset:0;pointer-events:none;opacity:.05;overflow:hidden;font-size:.65rem;line-height:1.3;word-break:break-all;user-select:none;padding:4px;border-radius:8px}
-  .shield{position:absolute;inset:0;background:rgba(17,17,17,.95);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;text-align:center;font-size:.85rem;color:#f88;z-index:5;border-radius:8px;padding:10px;cursor:pointer}
+  .watermark{position:absolute;inset:0;pointer-events:none;opacity:.05;overflow:hidden;font-size:.65rem;line-height:1.3;word-break:break-all;user-select:none;padding:4px;border-radius:14px}
+  .shield{position:absolute;inset:0;background:rgba(13,15,19,.96);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;text-align:center;font-size:.9rem;color:#f88;z-index:5;border-radius:14px;padding:14px;cursor:pointer}
   .shield.hidden{display:none}
-  #chatInput{flex:1;padding:10px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee}
-  section{border-top:1px solid #333;padding-top:12px;margin-top:12px}
-  .peers{font-size:.8rem;color:#8bf}
+  #chatInput,#gChatInput{flex:2 1 200px;min-height:46px;padding:11px 14px;border-radius:12px;
+    border:1px solid var(--line2);background:var(--panel2);color:var(--text);font-size:.95rem}
+  #btnSend,#gBtnSend{flex:0 0 54px;min-height:46px;font-size:1.2rem;padding:0}
+  section{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+  .peers{font-size:.88rem;color:#8fc6ff;font-weight:600;margin-bottom:4px}
   .install-card{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:80;
     max-width:536px;margin:0 auto;padding:16px;border-radius:22px;
     background:linear-gradient(165deg,rgba(14,32,62,.98),rgba(9,14,26,.98));
@@ -64,10 +109,10 @@
   .modal img{width:76px;height:76px;border-radius:19px;box-shadow:0 10px 26px rgba(0,0,0,.5)}
   .modal b{display:block;font-size:1.2rem;margin:13px 0 16px}
   .modal .steps{text-align:left;margin:0 0 18px}
-  .modal-x{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:50%;
-    border:1px solid #3a3a3a;background:rgba(255,255,255,.06);color:#999;font-size:1rem;cursor:pointer}
+  .modal-x{position:absolute;top:10px;right:10px;width:42px;height:42px;min-height:0;border-radius:50%;
+    border:1px solid #3a3a3a;background:rgba(255,255,255,.06);color:#999;font-size:1.1rem;cursor:pointer;padding:0}
   .os-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
-  .os-grid button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;
+  .os-grid button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 6px;min-height:64px;
     border-radius:15px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);
     color:#eee;font-size:.88rem;font-weight:600;cursor:pointer;transition:.15s}
   .os-grid button:active{transform:scale(.96)}
@@ -81,12 +126,14 @@
     width:52px;height:52px;border-radius:50%;border:1px solid #3a3a3a;cursor:pointer;
     background:rgba(28,28,28,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
     color:#eee;font-size:1.35rem;box-shadow:0 8px 24px rgba(0,0,0,.45)}
-  .status{font-size:.85rem;color:#8f8}
-  .status.err{color:#f88}
-  .sas-bar{background:#2a1c05;border:1px solid #a66;border-radius:10px;padding:10px 12px;margin-bottom:10px}
-  .sas-bar .sas-code{font-size:1.3rem;font-weight:800;letter-spacing:1px;color:#ffd580;margin:6px 0}
-  .call-tiles{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;min-height:4px}
-  .tile-video{width:140px;height:105px;border-radius:10px;background:#000;object-fit:cover;border:1px solid #444}
+  .status{font-size:.88rem;color:var(--ok);margin:6px 2px}
+  .status.err{color:var(--danger)}
+  .sas-bar{background:rgba(255,180,60,.08);border:1px solid rgba(255,180,60,.45);border-radius:14px;padding:14px;margin-bottom:12px}
+  .sas-bar p{margin:0 0 8px;font-size:.88rem}
+  .sas-bar .sas-code{font-size:1.5rem;font-weight:800;letter-spacing:1.5px;color:#ffd580;margin:8px 0;text-align:center}
+  .sas-bar button{width:100%}
+  .call-tiles{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;min-height:4px}
+  .tile-video{width:150px;height:112px;border-radius:12px;background:#000;object-fit:cover;border:1px solid var(--line2)}
   #noJsWarn{position:fixed;inset:0;z-index:2000;overflow:auto;
     background:#2a1608;color:#ffe2c2;padding:22px 18px;font-size:.95rem;line-height:1.5}
   #noJsWarn b{color:#fff}
@@ -104,75 +151,79 @@
 
 
 <h1>🔒 ParanoicCrypt P2P</h1>
-<p class="note">
-  Оберіть режим нижче: <b>«один на один»</b> — найпростіше й найанонімніше (лише два пристрої,
-  ніякого реле) — або <b>«колективний дзвінок»</b> — голос/відео й текст для кількох людей одразу
-  (mesh: кожен з'єднується з кожним напряму, нові учасники «знайомляться» з рештою через вже
-  встановлені зашифровані канали — сервера немає в жодному режимі). Код запрошення передаєте вручну —
-  будь-яким каналом (голосом, іншим месенджером). Нічого не зберігається, доки ви самі не натиснете
-  «Зберегти чат» — після закриття вкладки розмова і ключі шифрування зникають назавжди.<br><br>
-  <b>Шифрування:</b> подвійний каскад незалежних алгоритмів на кожен канал — ECDH P-256 → HKDF →
-  AES-256-GCM, а поверх нього ChaCha20-Poly1305 з окремим ключем (той самий звірений з OpenSSL код,
-  що й у файловому шифраторі ParanoicCrypt). Кожне повідомлення додатково доповнюється до найближчого
-  «кошика» розміру (як у Signal), щоб довжина тексту не була видна навіть тому, хто лише перехоплює
-  зашифровані пакети. У режимі «один на один» чат заблоковано, поки ви не підтвердите код звірки (SAS)
-  вголос — це ловить підміну з'єднання (MITM) до того, як ви скажете щось важливе.<br><br>
-  <b>Чесно про «офлайн»:</b> саме з'єднання й код запрошення не йдуть через жоден сервер. Але щоб
-  пробити NAT, браузер за замовчуванням запитує у Google/Cloudflare (STUN) ваш публічний IP — це
-  бачить лише сервер STUN, не зміст розмови. Якщо всі учасники на одному Wi-Fi/точці доступу —
-  увімкніть нижче «лише локальна мережа», тоді жоден зовнішній сервер не задіюється взагалі. Якщо
-  пряме з'єднання неможливе (симетричний NAT), браузер сам підключить публічний TURN-ретранслятор —
-  він передає лише зашифрований трафік, зміст повідомлень і розмови йому не видно, але він бачить
-  IP-адреси сторін.<br><br>
-  <b>Чесно про груповий дзвінок:</b> мій мікрофон/камера додаються до з'єднання одразу при вході —
-  зміну мікрофона/камери під час дзвінка не підтримано (це вимагало б повторного узгодження SDP,
-  а тут усе узгодження — ручне, копіюванням коду). Вимкнути мікрофон на льоту — можна. При великій
-  кількості учасників (mesh) кожен пристрій тримає з'єднання з кожним — на слабких телефонах і
-  повільних мережах на 6+ людей очікуйте гальм.<br><br>
-  <b>Чесно про антискрін:</b> надійно ловиться лише клавіша PrintScreen на Windows. Win+Shift+S,
-  Cmd+Shift+3/4/5 на macOS та скріншоти/запис на телефоні браузер у принципі не бачить — від них
-  захищає лише розмиття тексту й водяний знак, а не виявлення.
-</p>
+<p class="tagline">Приватна розмова напряму між браузерами — без сервера, без реєстрації.</p>
+<details class="info-details">
+  <summary>ℹ️ Як це працює і на що чесно розраховувати</summary>
+  <p class="note">
+    Оберіть режим нижче: <b>«один на один»</b> — найпростіше й найанонімніше (лише два пристрої,
+    ніякого реле) — або <b>«колективний дзвінок»</b> — голос/відео й текст для кількох людей одразу
+    (mesh: кожен з'єднується з кожним напряму, нові учасники «знайомляться» з рештою через вже
+    встановлені зашифровані канали — сервера немає в жодному режимі). Код запрошення передаєте вручну —
+    будь-яким каналом (голосом, іншим месенджером). Нічого не зберігається, доки ви самі не натиснете
+    «Зберегти чат» — після закриття вкладки розмова і ключі шифрування зникають назавжди.<br><br>
+    <b>Шифрування:</b> подвійний каскад незалежних алгоритмів на кожен канал — ECDH P-256 → HKDF →
+    AES-256-GCM, а поверх нього ChaCha20-Poly1305 з окремим ключем (той самий звірений з OpenSSL код,
+    що й у файловому шифраторі ParanoicCrypt). Кожне повідомлення додатково доповнюється до найближчого
+    «кошика» розміру (як у Signal), щоб довжина тексту не була видна навіть тому, хто лише перехоплює
+    зашифровані пакети. У режимі «один на один» чат заблоковано, поки ви не підтвердите код звірки (SAS)
+    вголос — це ловить підміну з'єднання (MITM) до того, як ви скажете щось важливе.<br><br>
+    <b>Чесно про «офлайн»:</b> саме з'єднання й код запрошення не йдуть через жоден сервер. Але щоб
+    пробити NAT, браузер за замовчуванням запитує у Google/Cloudflare (STUN) ваш публічний IP — це
+    бачить лише сервер STUN, не зміст розмови. Якщо всі учасники на одному Wi-Fi/точці доступу —
+    увімкніть нижче «лише локальна мережа», тоді жоден зовнішній сервер не задіюється взагалі. Якщо
+    пряме з'єднання неможливе (симетричний NAT), браузер сам підключить публічний TURN-ретранслятор —
+    він передає лише зашифрований трафік, зміст повідомлень і розмови йому не видно, але він бачить
+    IP-адреси сторін.<br><br>
+    <b>Чесно про груповий дзвінок:</b> мій мікрофон/камера додаються до з'єднання одразу при вході —
+    зміну мікрофона/камери під час дзвінка не підтримано (це вимагало б повторного узгодження SDP,
+    а тут усе узгодження — ручне, копіюванням коду). Вимкнути мікрофон на льоту — можна. При великій
+    кількості учасників (mesh) кожен пристрій тримає з'єднання з кожним — на слабких телефонах і
+    повільних мережах на 6+ людей очікуйте гальм.<br><br>
+    <b>Чесно про антискрін:</b> надійно ловиться лише клавіша PrintScreen на Windows. Win+Shift+S,
+    Cmd+Shift+3/4/5 на macOS та скріншоти/запис на телефоні браузер у принципі не бачить — від них
+    захищає лише розмиття тексту й водяний знак, а не виявлення.
+  </p>
+</details>
 
 <section id="home">
   <div class="row">
-    <label><input type="radio" name="mode" id="modeSolo" checked> 👤 Один на один</label>
-    <label><input type="radio" name="mode" id="modeGroup"> 👥 Колективний дзвінок</label>
+    <label class="check"><input type="radio" name="mode" id="modeSolo" checked> 👤 Один на один</label>
+    <label class="check"><input type="radio" name="mode" id="modeGroup"> 👥 Колективний дзвінок</label>
   </div>
   <div class="row">
     <input id="nickInput" placeholder="Ваш нік (необов'язково)" maxlength="24">
-    <label><input type="checkbox" id="anonMode"> 🎭 Анонім</label>
+    <label class="check"><input type="checkbox" id="anonMode"> 🎭 Анонім</label>
   </div>
   <div class="row" id="groupMediaRow" style="display:none">
-    <label><input type="checkbox" id="micOn" checked> 🎙️ Мікрофон</label>
-    <label><input type="checkbox" id="camOn"> 📷 Камера</label>
+    <label class="check"><input type="checkbox" id="micOn" checked> 🎙️ Мікрофон</label>
+    <label class="check"><input type="checkbox" id="camOn"> 📷 Камера</label>
   </div>
   <div class="row">
-    <label><input type="checkbox" id="lanOnly"> 📡 Лише локальна мережа (без STUN/TURN, той самий Wi-Fi)</label>
+    <label class="check"><input type="checkbox" id="lanOnly"> 📡 Лише локальна мережа (без STUN/TURN, той самий Wi-Fi)</label>
   </div>
   <div class="row">
-    <button id="btnCreate">🆕 Створити запрошення</button>
-    <button id="btnJoin">🔑 Приєднатися за кодом</button>
+    <button class="primary" id="btnCreate">🆕 Створити запрошення</button>
+    <button class="ghost" id="btnJoin">🔑 Приєднатися за кодом</button>
   </div>
 </section>
 
 <section id="createPanel" class="hidden">
   <p><b>Крок 1.</b> Надішліть цей код тому, кого запрошуєте:</p>
   <textarea id="offerCode" readonly></textarea>
-  <div class="row"><button id="copyOffer">📋 Копіювати</button></div>
+  <div class="row"><button class="ghost" id="copyOffer">📋 Копіювати</button></div>
   <p><b>Крок 2.</b> Вставте код-відповідь:</p>
   <textarea id="answerInput" placeholder="Код відповіді"></textarea>
-  <div class="row"><button id="btnComplete">🔗 З'єднатися</button></div>
+  <div class="row"><button class="primary" id="btnComplete">🔗 З'єднатися</button></div>
   <p id="createStatus" class="status"></p>
 </section>
 
 <section id="joinPanel" class="hidden">
   <p><b>Крок 1.</b> Вставте код від того, хто вас запросив:</p>
   <textarea id="offerInput" placeholder="Код запрошення"></textarea>
-  <div class="row"><button id="btnGenAnswer">🔓 Згенерувати код відповіді</button></div>
+  <div class="row"><button class="primary" id="btnGenAnswer">🔓 Згенерувати код відповіді</button></div>
   <p><b>Крок 2.</b> Надішліть код назад:</p>
   <textarea id="answerCode" readonly></textarea>
-  <div class="row"><button id="copyAnswer">📋 Копіювати</button></div>
+  <div class="row"><button class="ghost" id="copyAnswer">📋 Копіювати</button></div>
   <p id="joinStatus" class="status"></p>
 </section>
 
@@ -182,7 +233,7 @@
   <div id="sasBar" class="sas-bar hidden">
     <p>🔐 Звірте цей код із співрозмовником <b>вголос або іншим каналом</b> (не цим чатом) — це доводить, що з'єднання ніхто не підмінив (MITM):</p>
     <p class="sas-code" id="sasCode">—</p>
-    <button id="btnSasConfirm">✅ Код збігається, довіряю</button>
+    <button class="ok" id="btnSasConfirm">✅ Код збігається, довіряю</button>
     <p class="note">Не збігається — негайно завершіть розмову, вас підключили до когось іншого.</p>
   </div>
   <p class="note">🌫️ Текст повідомлень розмито — наведіть курсор (ПК) чи натисніть і тримайте (телефон), щоб прочитати одне повідомлення. При PrintScreen (Windows) чат сам ховається й попереджає співрозмовника.</p>
@@ -193,11 +244,11 @@
   </div>
   <div class="row">
     <input id="chatInput" placeholder="Повідомлення..." autocomplete="off" disabled>
-    <button id="btnSend" disabled>➤</button>
+    <button class="primary" id="btnSend" disabled>➤</button>
   </div>
   <div class="row">
-    <button id="btnSaveChat">💾 Зберегти чат (з паролем)</button>
-    <button id="btnLeave">🔚 Завершити розмову</button>
+    <button class="ghost" id="btnSaveChat">💾 Зберегти чат (з паролем)</button>
+    <button class="danger" id="btnLeave">🔚 Завершити розмову</button>
   </div>
 </section>
 
@@ -207,16 +258,16 @@
   <p class="note">Код біля кожного імені звіряйте вголос особисто з цією людиною — це і є перевірка, що з'єднання не підмінене.</p>
   <div id="callTiles" class="call-tiles"></div>
   <div class="row">
-    <button id="btnMicToggle">🎙️ Мікрофон: увімк.</button>
-    <button id="btnInviteMoreGroup">➕ Запросити ще</button>
-    <button id="btnLeaveGroup">🔚 Вийти з дзвінка</button>
+    <button class="ghost" id="btnMicToggle">🎙️ Мікрофон: увімк.</button>
+    <button class="ghost" id="btnInviteMoreGroup">➕ Запросити ще</button>
+    <button class="danger" id="btnLeaveGroup">🔚 Вийти з дзвінка</button>
   </div>
   <div id="gmsgsWrap">
     <div id="gmsgs"></div>
   </div>
   <div class="row">
     <input id="gChatInput" placeholder="Повідомлення в груповий чат..." autocomplete="off">
-    <button id="gBtnSend">➤</button>
+    <button class="primary" id="gBtnSend">➤</button>
   </div>
 </section>
 

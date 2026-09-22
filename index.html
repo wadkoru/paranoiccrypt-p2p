@@ -886,8 +886,11 @@ async function handleGroupSignal(env, viaId){
   }
   if (env.kind === "offer") {
     const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await makeAnswerBundle({ sdp: env.sdp, pub: env.pub }, state.groupLanOnly);
-    const dc = await dcPromise;
-    wireGroupPeer(env.from, env.nick, pc, dc, aesKey, chachaKey, fingerprint);
+    /* Так само, як і в ручному обміні файлами: канал відкриється лише ПІСЛЯ того, як
+       адресат отримає й застосує цю відповідь — тож не чекаємо на це перед відправкою. */
+    withTimeout(dcPromise, 60000, "очікування з'єднання в дзвінку")
+      .then((dc) => wireGroupPeer(env.from, env.nick, pc, dc, aesKey, chachaKey, fingerprint))
+      .catch((err) => appendGroupSystem("Не вдалося з'єднатися з " + (env.nick || env.from) + ": " + err.message));
     await sendToGroupPeer(viaId, { t:"signal", kind:"answer", from: state.myId, nick: state.myNick, to: env.from, sdp: bundle.sdp, pub: bundle.pub });
   } else if (env.kind === "answer") {
     const pending = state.pendingEdges.get(env.from);
@@ -1040,7 +1043,7 @@ async function createRoom(){
   showPanel("createPanel");
   if (state.mode === "group") {
     state.groupLanOnly = lanOnly;
-    state.localStream = await getLocalMedia($("micOn").checked, $("camOn").checked, (t)=>setStatus("createStatus", t));
+    state.localStream = await getLocalMedia($("micOn").checked, $("camOn").checked, (t,e)=>setStatus("createStatus", t, e));
   }
   setStatus("createStatus", "Готуємо з'єднання (мережеві дані)...");
   const { pc, dc, privateKey, bundle } = await withTimeout(makeOfferBundle(lanOnly), 15000, "підготовка запрошення");
@@ -1068,7 +1071,7 @@ async function completeRoom(){
   try {
     setStatus("createStatus", "Підключаємось...");
     const payload = JSON.parse(td.decode(unb64($("answerInput").value)));
-    await completeFromPayload(payload, (t)=>setStatus("createStatus", t));
+    await completeFromPayload(payload, (t,e)=>setStatus("createStatus", t, e));
     $("answerInput").value = "";
   } catch (err) {
     setStatus("createStatus", "Код не підходить: " + err.message, true);
@@ -1080,7 +1083,7 @@ async function completeRoomFromFile(){
     if (!f) { setStatus("createStatus", "Оберіть файл відповіді.", true); return; }
     setStatus("createStatus", "Читаємо файл...");
     const payload = readBundleFile(await f.arrayBuffer());
-    await completeFromPayload(payload, (t)=>setStatus("createStatus", t));
+    await completeFromPayload(payload, (t,e)=>setStatus("createStatus", t, e));
     setStatus("createStatus", "З'єднано.");
   } catch (err) {
     setStatus("createStatus", "Не вдалося: " + err.message, true);
@@ -1096,13 +1099,24 @@ async function genAnswerFromPayload(payload, lanOnly, onStatus){
   }
   if (onStatus) onStatus("Готуємо відповідь (мережеві дані)...");
   const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await withTimeout(makeAnswerBundle(payload, lanOnly), 15000, "підготовка відповіді");
-  const dc = await withTimeout(dcPromise, 15000, "відкриття каналу зв'язку");
-  if (state.mode === "group") {
-    wireGroupPeer(payload.id, payload.nick, pc, dc, aesKey, chachaKey, fingerprint);
-    showPanel("groupPanel"); renderGroupParticipants();
-  } else {
-    wirePeer(payload.id, payload.nick, pc, dc, aesKey, chachaKey, fingerprint);
-  }
+  /* Важливо: канал (pc.ondatachannel) відкриється лише ПІСЛЯ того, як інша сторона
+     застосує саме цю відповідь — тобто вже після того, як ми надішлемо їй файл-відповідь.
+     Чекати на це ТУТ, перед тим як віддати bundle для скачування, — глухий кут: файл
+     ніколи не з'явиться, бо ми чекаємо на подію, яка настане лише завдяки цьому файлу.
+     Тож віддаємо bundle одразу, а підключення (wirePeer/wireGroupPeer) довершуємо
+     окремо, коли dcPromise насправді розв'яжеться (у фоні, не блокуючи це). */
+  withTimeout(dcPromise, 60000, "очікування з'єднання")
+    .then((dc) => {
+      if (state.mode === "group") {
+        wireGroupPeer(payload.id, payload.nick, pc, dc, aesKey, chachaKey, fingerprint);
+        showPanel("groupPanel"); renderGroupParticipants();
+      } else {
+        wirePeer(payload.id, payload.nick, pc, dc, aesKey, chachaKey, fingerprint);
+      }
+    })
+    .catch((err) => {
+      if (onStatus) onStatus("З'єднання не встановилося: " + err.message, true);
+    });
   return bundle;
 }
 async function joinRoom(){
@@ -1110,7 +1124,7 @@ async function joinRoom(){
     const lanOnly = $("lanOnly").checked;
     setStatus("joinStatus", "Обробляємо код...");
     const payload = JSON.parse(td.decode(unb64($("offerInput").value)));
-    const bundle = await genAnswerFromPayload(payload, lanOnly, (t)=>setStatus("joinStatus", t));
+    const bundle = await genAnswerFromPayload(payload, lanOnly, (t,e)=>setStatus("joinStatus", t, e));
     $("answerCode").value = b64(te.encode(JSON.stringify(bundle)));
     setStatus("joinStatus", "Код готовий, надішліть назад. З'єднання відкриється автоматично.");
   } catch (err) {
@@ -1124,7 +1138,7 @@ async function joinRoomFromFile(){
     setStatus("joinStatus", "Читаємо файл...");
     const payload = readBundleFile(await f.arrayBuffer());
     const lanOnly = $("lanOnly").checked;
-    const bundle = await genAnswerFromPayload(payload, lanOnly, (t)=>setStatus("joinStatus", t));
+    const bundle = await genAnswerFromPayload(payload, lanOnly, (t,e)=>setStatus("joinStatus", t, e));
     state.pendingAnswerBundle = bundle;
     downloadBytes(buildBundleFile(bundle), linkFileName());
     $("answerFileOut").classList.remove("hidden");

@@ -793,7 +793,10 @@ async function getLocalMedia(mic, cam, onStatus){
   }
 }
 function wireGroupPeer(peerId, nick, pc, dc, aesKey, chachaKey, fingerprint){
-  const entry = { pc, dc, aesKey, chachaKey, fingerprint: fingerprint || null, ready:false, nick: nick || peerId, audioEl:null, videoEl:null };
+  /* nick навмисно лишається null, а не одразу peerId, коли він ще не відомий (relay-
+     з'єднання до отримання відповіді) — щоб можна було відрізнити "справді невідомо"
+     від "нік порожній", напр. у системному повідомленні про приєднання нижче. */
+  const entry = { pc, dc, aesKey, chachaKey, fingerprint: fingerprint || null, ready:false, nick: nick || null, audioEl:null, videoEl:null };
   state.peers.set(peerId, entry);
   dc.binaryType = "arraybuffer";
   pc.ontrack = (e) => attachRemoteTrack(entry, peerId, e);
@@ -845,7 +848,12 @@ function onGroupPeerReady(peerId){
   const knownIds = [...state.peers.keys()].filter((id) => id !== peerId && state.peers.get(id).ready);
   if (knownIds.length) sendToGroupPeer(peerId, { t:"peers", ids: knownIds });
   broadcastGroup({ t:"peers", ids:[peerId] }, peerId);
-  appendGroupSystem((state.peers.get(peerId).nick || peerId) + " приєднався(лась) до дзвінка");
+  /* На дуже швидких з'єднаннях (та сама мережа) канал іноді відкривається трохи
+     раніше, ніж прийде нік у відповіді на сигнал — тоді просто не показуємо
+     технічний ідентифікатор замість людського імені. Список учасників (нижче)
+     оновиться правильним ніком одразу, як тільки він стане відомий. */
+  const nick = state.peers.get(peerId).nick;
+  appendGroupSystem((nick ? nick : "Учасник") + " приєднався(лась) до дзвінка");
 }
 async function handleGroupMessage(viaId, buf){
   const entry = state.peers.get(viaId);

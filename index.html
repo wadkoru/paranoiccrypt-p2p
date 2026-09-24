@@ -181,10 +181,14 @@
     <b>Чесно про «офлайн»:</b> саме з'єднання й код запрошення не йдуть через жоден сервер. Але щоб
     пробити NAT, браузер за замовчуванням запитує у Google/Cloudflare (STUN) ваш публічний IP — це
     бачить лише сервер STUN, не зміст розмови. Якщо всі учасники на одному Wi-Fi/точці доступу —
-    увімкніть нижче «лише локальна мережа», тоді жоден зовнішній сервер не задіюється взагалі. Якщо
-    пряме з'єднання неможливе (симетричний NAT), браузер сам підключить публічний TURN-ретранслятор —
-    він передає лише зашифрований трафік, зміст повідомлень і розмови йому не видно, але він бачить
-    IP-адреси сторін.<br><br>
+    увімкніть нижче «лише локальна мережа», тоді жоден зовнішній сервер не задіюється взагалі.
+    При прямому P2P-з'єднанні співрозмовник завжди бачить ваш IP — так працює будь-яке пряме
+    з'єднання, це не рішення застосунку, обійти це неможливо без стороннього сервера-посередника
+    (а такого тут навмисно немає). Якщо потрібно, щоб IP не бачив ніхто — ні STUN, ні
+    співрозмовник — увімкніть VPN на своєму пристрої <b>до того</b>, як відкриєте цю сторінку:
+    тоді всі побачать лише IP VPN, а не ваш. Симетричний NAT (коли пряме з'єднання взагалі
+    неможливе без ретранслятора) тут поки не підтримано — безкоштовний TURN, який тут був,
+    перестав приймати підключення.<br><br>
     <b>Чесно про груповий дзвінок:</b> мій мікрофон/камера додаються до з'єднання одразу при вході —
     зміну мікрофона/камери під час дзвінка не підтримано (це вимагало б повторного узгодження SDP,
     а тут усе узгодження — ручне, копіюванням коду). Вимкнути мікрофон на льоту — можна. При великій
@@ -340,20 +344,26 @@
 (function(){var w=document.getElementById("noJsWarn"); if(w) w.remove();})();
 
 
-/* Без lanOnly: публічні STUN (пробити NAT) + публічний TURN (як останній резерв, якщо пряме
-   з'єднання неможливе). З lanOnly: порожній список — жоден зовнішній сервер не запитується,
-   з'єднання можливе лише в межах однієї локальної мережі/Wi-Fi/точки доступу. */
-const RTC_CONFIG_FULL = {
-  iceServers: [
-    { urls: ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"] },
-    {
-      urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443", "turn:openrelay.metered.ca:443?transport=tcp"],
-      username: "openrelayproject", credential: "openrelayproject"
-    }
-  ]
-};
+/* Без lanOnly: публічні STUН (пробити NAT) + публічний TURN (останній резерв, якщо
+   пряме з'єднання неможливе). З lanOnly: порожній список — жоден зовнішній сервер
+   не запитується, працює лише в межах однієї локальної мережі/Wi-Fi.
+   При прямому P2P-з'єднанні співрозмовник завжди бачить ваш IP — так працює
+   будь-яке пряме з'єднання, це не рішення застосунку. Якщо потрібно приховати IP
+   і від співрозмовника, і від усіх — увімкніть VPN на своєму пристрої ДО того, як
+   відкриєте цю сторінку: тоді й STUN, і співрозмовник побачать лише IP VPN.
+   (Були плани зробити тут кнопку «завжди через ретранслятор», але єдиний
+   безкоштовний TURN, який тут був підключений, довелось прибрати — провайдер
+   більше не приймає ці спільні дані, підключення просто не встановлювалося б.) */
+const ICE_SERVERS = [
+  { urls: ["stun:stun.l.google.com:19302", "stun:stun.cloudflare.com:3478"] }
+];
+const RTC_CONFIG_FULL = { iceServers: ICE_SERVERS };
 const RTC_CONFIG_LAN = { iceServers: [] };
-function rtcConfig(lanOnly){ return lanOnly ? RTC_CONFIG_LAN : RTC_CONFIG_FULL; }
+function rtcConfig(net){
+  net = net || {};
+  if (net.lanOnly) return RTC_CONFIG_LAN;
+  return RTC_CONFIG_FULL;
+}
 
 const $ = (id) => document.getElementById(id);
 const te = new TextEncoder(), td = new TextDecoder();
@@ -384,7 +394,7 @@ const state = {
   peers: new Map(),        // peerId -> {pc, dc, aesKey, chachaKey, fingerprint, ready, nick, audioEl, videoEl}
   pendingEdges: new Map(), // peerId -> {pc, privateKey, dc}
   localStream: null,       // мій мікрофон/камера (лише в group-режимі)
-  groupLanOnly: false,
+  groupNet: { lanOnly:false },
   // --- спільне ---
   pending: null,        // {pc, privateKey, dc?} — під час встановлення першого з'єднання (обидва режими)
   pendingBundle: null,  // мій offer/answer bundle як об'єкт — для повторного скачування файлу
@@ -397,6 +407,9 @@ function resolveNick(){
   const nick = anon ? ("Анонім-" + state.myId.slice(0,4)) : (typed || ("Гість-" + state.myId.slice(0,4)));
   state.myNick = nick;
   return nick;
+}
+function readNet(){
+  return { lanOnly: $("lanOnly").checked };
 }
 
 /* ---- Пароль -> ключ (PBKDF2, 300 000 ітерацій) для збереження чату локально
@@ -704,9 +717,9 @@ function waitIceComplete(pc){
 
 /* ---- Побудова offer/answer-бандлів. У group-режимі одразу додаємо мій мікрофон/камеру
    в SDP (щоб не робити пізнішу renegotiation — тут її взагалі нема, все ручне). ---- */
-async function makeOfferBundle(lanOnly){
+async function makeOfferBundle(net){
   const kp = await genKeyPair();
-  const pc = new RTCPeerConnection(rtcConfig(lanOnly));
+  const pc = new RTCPeerConnection(rtcConfig(net));
   if (state.localStream) for (const track of state.localStream.getTracks()) pc.addTrack(track, state.localStream);
   const dc = pc.createDataChannel("chat");
   const offer = await pc.createOffer();
@@ -714,9 +727,9 @@ async function makeOfferBundle(lanOnly){
   await waitIceComplete(pc);
   return { pc, dc, privateKey: kp.privateKey, bundle: { id: state.myId, nick: state.myNick, sdp: pc.localDescription.sdp, pub: await exportPub(kp.publicKey) } };
 }
-async function makeAnswerBundle(offerBundle, lanOnly){
+async function makeAnswerBundle(offerBundle, net){
   const kp = await genKeyPair();
-  const pc = new RTCPeerConnection(rtcConfig(lanOnly));
+  const pc = new RTCPeerConnection(rtcConfig(net));
   if (state.localStream) for (const track of state.localStream.getTracks()) pc.addTrack(track, state.localStream);
   let dcResolve; const dcPromise = new Promise(r => dcResolve = r);
   pc.ondatachannel = (e) => dcResolve(e.channel);
@@ -882,7 +895,7 @@ async function handleGroupMessage(viaId, buf){
   }
 }
 async function initiateGroupRelay(targetId, viaId){
-  const { pc, dc, privateKey, bundle } = await makeOfferBundle(state.groupLanOnly);
+  const { pc, dc, privateKey, bundle } = await makeOfferBundle(state.groupNet);
   state.pendingEdges.set(targetId, { pc, privateKey, dc });
   wireGroupPeer(targetId, null, pc, dc, null, null, null);
   await sendToGroupPeer(viaId, { t:"signal", kind:"offer", from: state.myId, nick: state.myNick, to: targetId, sdp: bundle.sdp, pub: bundle.pub });
@@ -893,7 +906,7 @@ async function handleGroupSignal(env, viaId){
     return;
   }
   if (env.kind === "offer") {
-    const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await makeAnswerBundle({ sdp: env.sdp, pub: env.pub }, state.groupLanOnly);
+    const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await makeAnswerBundle({ sdp: env.sdp, pub: env.pub }, state.groupNet);
     /* Так само, як і в ручному обміні файлами: канал відкриється лише ПІСЛЯ того, як
        адресат отримає й застосує цю відповідь — тож не чекаємо на це перед відправкою. */
     withTimeout(dcPromise, 60000, "очікування з'єднання в дзвінку")
@@ -954,7 +967,7 @@ function toggleMic(){
 async function inviteMoreGroup(){
   showPanel("createPanel");
   setStatus("createStatus", "Готуємо запрошення (мережеві дані)...");
-  const { pc, dc, privateKey, bundle } = await withTimeout(makeOfferBundle(state.groupLanOnly), 15000, "підготовка запрошення");
+  const { pc, dc, privateKey, bundle } = await withTimeout(makeOfferBundle(state.groupNet), 15000, "підготовка запрошення");
   state.pending = { pc, privateKey, dc };
   state.pendingBundle = bundle;
   $("offerCode").value = b64(te.encode(JSON.stringify(bundle)));
@@ -1047,14 +1060,14 @@ function renderPeerCount(){
    в один бік; текстовий код лишається як запасний варіант у деталях нижче. ---- */
 async function createRoom(){
   resolveNick();
-  const lanOnly = $("lanOnly").checked;
+  const net = readNet();
   showPanel("createPanel");
   if (state.mode === "group") {
-    state.groupLanOnly = lanOnly;
+    state.groupNet = net;
     state.localStream = await getLocalMedia($("micOn").checked, $("camOn").checked, (t,e)=>setStatus("createStatus", t, e));
   }
   setStatus("createStatus", "Готуємо з'єднання (мережеві дані)...");
-  const { pc, dc, privateKey, bundle } = await withTimeout(makeOfferBundle(lanOnly), 15000, "підготовка запрошення");
+  const { pc, dc, privateKey, bundle } = await withTimeout(makeOfferBundle(net), 15000, "підготовка запрошення");
   state.pending = { pc, privateKey, dc };
   state.pendingBundle = bundle;
   $("offerCode").value = b64(te.encode(JSON.stringify(bundle)));
@@ -1099,14 +1112,14 @@ async function completeRoomFromFile(){
 }
 
 /* ---- Перший обмін: той, хто приєднується (обидва режими) ---- */
-async function genAnswerFromPayload(payload, lanOnly, onStatus){
+async function genAnswerFromPayload(payload, net, onStatus){
   resolveNick();
   if (state.mode === "group") {
-    state.groupLanOnly = lanOnly;
+    state.groupNet = net;
     state.localStream = await getLocalMedia($("micOn").checked, $("camOn").checked, onStatus);
   }
   if (onStatus) onStatus("Готуємо відповідь (мережеві дані)...");
-  const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await withTimeout(makeAnswerBundle(payload, lanOnly), 15000, "підготовка відповіді");
+  const { pc, dcPromise, aesKey, chachaKey, fingerprint, bundle } = await withTimeout(makeAnswerBundle(payload, net), 15000, "підготовка відповіді");
   /* Важливо: канал (pc.ondatachannel) відкриється лише ПІСЛЯ того, як інша сторона
      застосує саме цю відповідь — тобто вже після того, як ми надішлемо їй файл-відповідь.
      Чекати на це ТУТ, перед тим як віддати bundle для скачування, — глухий кут: файл
@@ -1129,10 +1142,10 @@ async function genAnswerFromPayload(payload, lanOnly, onStatus){
 }
 async function joinRoom(){
   try {
-    const lanOnly = $("lanOnly").checked;
+    const net = readNet();
     setStatus("joinStatus", "Обробляємо код...");
     const payload = JSON.parse(td.decode(unb64($("offerInput").value)));
-    const bundle = await genAnswerFromPayload(payload, lanOnly, (t,e)=>setStatus("joinStatus", t, e));
+    const bundle = await genAnswerFromPayload(payload, net, (t,e)=>setStatus("joinStatus", t, e));
     $("answerCode").value = b64(te.encode(JSON.stringify(bundle)));
     setStatus("joinStatus", "Код готовий, надішліть назад. З'єднання відкриється автоматично.");
   } catch (err) {
@@ -1145,8 +1158,8 @@ async function joinRoomFromFile(){
     if (!f) { setStatus("joinStatus", "Оберіть файл запрошення.", true); return; }
     setStatus("joinStatus", "Читаємо файл...");
     const payload = readBundleFile(await f.arrayBuffer());
-    const lanOnly = $("lanOnly").checked;
-    const bundle = await genAnswerFromPayload(payload, lanOnly, (t,e)=>setStatus("joinStatus", t, e));
+    const net = readNet();
+    const bundle = await genAnswerFromPayload(payload, net, (t,e)=>setStatus("joinStatus", t, e));
     state.pendingAnswerBundle = bundle;
     downloadBytes(buildBundleFile(bundle), linkFileName());
     $("answerFileOut").classList.remove("hidden");

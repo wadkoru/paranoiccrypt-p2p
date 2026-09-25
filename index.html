@@ -26,6 +26,30 @@
     background-size:auto, 34px 34px, 34px 34px;
     -webkit-mask-image:radial-gradient(85% 60% at 50% 5%, #000 40%, transparent 88%);
             mask-image:radial-gradient(85% 60% at 50% 5%, #000 40%, transparent 88%)}
+
+  /* ---------- "цифровий дощ": лише transform-анімація (GPU-шар), без JS і без canvas ---------- */
+  .rain{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:.5}
+  .rain i{position:absolute;top:-35%;width:2px;height:24%;border-radius:2px;font-style:normal;
+    background:linear-gradient(to bottom, transparent, rgba(57,255,20,.9) 55%, transparent 100%);
+    animation:rainFall linear infinite}
+  @keyframes rainFall{ from{transform:translateY(-45vh)} to{transform:translateY(145vh)} }
+  .rain i:nth-child(1){left:2%;animation-duration:7.4s;animation-delay:-.6s}
+  .rain i:nth-child(2){left:9%;animation-duration:9.8s;animation-delay:-4.9s}
+  .rain i:nth-child(3){left:16%;animation-duration:6.6s;animation-delay:-2.3s}
+  .rain i:nth-child(4){left:24%;animation-duration:11.2s;animation-delay:-7.1s}
+  .rain i:nth-child(5){left:31%;animation-duration:8.1s;animation-delay:-.9s}
+  .rain i:nth-child(6){left:39%;animation-duration:7s;animation-delay:-5.4s}
+  .rain i:nth-child(7){left:47%;animation-duration:10.4s;animation-delay:-3.2s}
+  .rain i:nth-child(8){left:54%;animation-duration:6.9s;animation-delay:-1.7s}
+  .rain i:nth-child(9){left:61%;animation-duration:9.1s;animation-delay:-6.6s}
+  .rain i:nth-child(10){left:68%;animation-duration:7.8s;animation-delay:-2.9s}
+  .rain i:nth-child(11){left:75%;animation-duration:11.7s;animation-delay:-8.3s}
+  .rain i:nth-child(12){left:81%;animation-duration:6.3s;animation-delay:-.3s}
+  .rain i:nth-child(13){left:87%;animation-duration:9.6s;animation-delay:-4.1s}
+  .rain i:nth-child(14){left:93%;animation-duration:8.4s;animation-delay:-6s}
+  .rain i:nth-child(15){left:97%;animation-duration:10.9s;animation-delay:-1.4s}
+  .rain i:nth-child(16){left:45%;animation-duration:12.3s;animation-delay:-9.7s}
+  @media (prefers-reduced-motion:reduce){ .rain{display:none} }
   h1{font-size:1.3rem;margin:4px 0 2px;letter-spacing:-.3px;font-family:var(--mono);color:#eafff2}
   .tagline{margin:0 0 12px;color:var(--dim);font-size:.92rem}
   .note{font-size:.85rem;color:var(--dim);line-height:1.5}
@@ -152,6 +176,7 @@
 </style>
 </head>
 <body>
+<div class="rain" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div id="noJsWarn">
   <b>⚠️ Сторінка відкрита як документ — кнопки не працюватимуть</b>
   <p><b>iPhone / iPad:</b> Apple не дозволяє запускати локальні HTML-файли. Потрібне посилання:
